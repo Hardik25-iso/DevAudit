@@ -1,0 +1,78 @@
+# IndicDLP — Indian Government Document Text-Layer Audit
+
+Research project investigating a specific, under-examined failure mode in Indian
+government PDFs: **a text layer that extracts "successfully" and is
+linguistically wrong.**
+
+## The problem
+
+Many Indian government PDFs are produced with legacy non-Unicode Devanagari
+fonts (Shree-Dev, Kruti Dev, DV-TTSurekh, Chanakya). These map Devanagari glyphs
+onto ASCII codepoints in *visual* order rather than *logical* order.
+
+The consequence:
+
+- `pdftotext` reports success and returns Devanagari-looking text
+- The text is linguistically wrong — reordered vowel signs, substituted
+  consonants, spurious spaces
+- **No error is raised anywhere in the pipeline**
+- Every downstream system (search, RAG, datasets) silently inherits it
+
+Example from a municipal budget document:
+
+| Extracted | Correct | Failure |
+|---|---|---|
+| `जानवे ारी` | `जानेवारी` | vowel sign moved |
+| `स्थालनक सांस्था कर` | `स्थानिक संस्था कर` | न→ल, ं→ां |
+| `लमळकत` | `मिळकत` | consonant substituted |
+| `जमा बाज ू` | `जमा बाजू` | matra detached |
+
+## Scope
+
+This is **not** a claim to be the first Indian document dataset — IndicDLP
+(ICDAR 2025, AI4Bharat / IIT Madras / IIIT Hyderabad) covers layout parsing on
+120k pages. It is **not** the first Devanagari OCR benchmark — arXiv 2606.29213
+covers OCR on scans.
+
+Neither examines the **digital text layer**, because in English that is a solved
+problem. That gap is this project's.
+
+## Phases
+
+| Phase | What | Status |
+|---|---|---|
+| 0 | Threat/scope definition, extraction schema, annotation guidelines | not started |
+| 1 | Collection + font/encoding audit at scale | **in progress** |
+| 2 | Ground truth: LLM-assisted draft + human verification | later |
+| 3 | Benchmark existing tools | later |
+| 4 | Legacy-font converter + constraint-based validation | later |
+| 5 | Write-up, dataset release | later |
+
+## Phase 1 — go/no-go gate
+
+Phase 1 exists to answer one question: *what percentage of Indian government
+PDFs have (a) no text layer, (b) legacy non-Unicode fonts, (c) structurally
+invalid Devanagari, (d) clean Unicode text?*
+
+Decision rule, pre-registered before any numbers were seen:
+
+- **Go:** `LEGACY + SUSPECT >= 15%`, or `LEGACY + SUSPECT >= 5%` with
+  `UNCLASSIFIED >= 15%`
+- **Pivot:** all three under 10% combined
+- **In between:** hand-inspect 30 `UNCLASSIFIED` files, then decide. If
+  `UNCLASSIFIED` is too small to sample 30, draw from `LEGACY + SUSPECT`
+  instead and use the confirmed-corruption rate among them.
+
+A negative result is a successful week, not a failure.
+
+## Documents
+
+- [`docs/phase1-recon.md`](docs/phase1-recon.md) — audit tool findings and the
+  source reachability survey
+
+## Licence / data ethics
+
+Only official `.gov.in` and official body domains are collected. No commercial
+tender aggregators, no Scribd — unclear licensing makes a dataset
+unpublishable. Every source's terms are logged before collection, not during
+write-up.

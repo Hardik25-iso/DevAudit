@@ -1,0 +1,20 @@
+# Claude Code worktrees — these contain checkouts of OTHER repos.
+# Never remove this line: without it, unrelated projects get committed here.
+.claude/worktrees/
+
+# Corpus data — bulk lives outside the repo, see docs/phase1-recon.md
+data/*.sqlite
+data/*.sqlite-journal
+data/*.csv
+*.pdf
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+
+# OS
+Thumbs.db
+desktop.ini
