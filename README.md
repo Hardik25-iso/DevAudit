@@ -1,8 +1,12 @@
-# IndicDLP — Indian Government Document Text-Layer Audit
+# DevAudit — Indian Government Document Text-Layer Audit
 
 Research project investigating a specific, under-examined failure mode in Indian
 government PDFs: **a text layer that extracts "successfully" and is
 linguistically wrong.**
+
+> **Note on the name.** This project is *not* IndicDLP. IndicDLP (ICDAR 2025) is
+> separate, existing work that this project cites as related work and builds on
+> for layout parsing. See [Scope](#scope).
 
 ## The problem
 
@@ -64,6 +68,30 @@ Decision rule, pre-registered before any numbers were seen:
   instead and use the confirmed-corruption rate among them.
 
 A negative result is a successful week, not a failure.
+
+## How Phase 1 is sequenced, and why
+
+The order matters more than the code does.
+
+| # | Step | Why here |
+|---|---|---|
+| 1 | Survey the sources | Reachability is the only thing that can kill the phase outright. Learn it before building anything that assumes it. |
+| 2 | Rewrite + calibrate the audit | The audit is the measuring instrument. An uncalibrated instrument produces a number that *looks* valid. |
+| 3 | Collect the corpus | Only once the instrument is trusted. |
+| 4 | Run the audit, report | The go/no-go number. |
+
+**Why the scraper is last.** If the heuristics are wrong, finding out on 20
+hand-picked files costs an afternoon. Finding out on 400 scraped files costs the
+week — and nothing about the output would look wrong.
+
+**Why the decision rule was written before any data.** Pre-registering the
+threshold is what stops it drifting to meet whatever the data turns out to say.
+It is also what makes a negative result publishable rather than embarrassing.
+
+**Why `UNCLASSIFIED` is a bucket and not an error.** Every defect found in the
+audit tool (§1 of the recon) pushed the corruption estimate *down*. A tool that
+fails toward "nothing to see here" will always talk you out of your own project.
+Making unclassifiable input visible is the fix.
 
 ## Documents
 
