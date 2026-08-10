@@ -24,6 +24,7 @@ Crawl policy (non-negotiable, see config.py):
 
 import argparse
 import hashlib
+import random
 import sqlite3
 import sys
 import time
@@ -172,31 +173,80 @@ class Crawler:
         return None
 
 
-def discover_links(crawler, source):
-    """Find PDF URLs reachable from a source's seed pages."""
+# Link text / href fragments that suggest a page listing documents. Used to
+# prioritise the crawl frontier: homepages alone yielded 77 URLs, nowhere near
+# the 200-400 the corpus needs, and the documents live one or two clicks in.
+DOC_HINTS = [
+    "tender", "budget", "download", "notice", "circular", "report", "rti",
+    "document", "publication", "act", "rule", "policy", "scheme", "archive",
+    "citizen", "department", "annual", "resolution", "gr", "advertisement",
+    "recruitment", "quotation", "nit", "eoi", "dpr", "minutes",
+]
+
+
+def _looks_like_doc_page(href, text):
+    blob = f"{href} {text}".lower()
+    return any(h in blob for h in DOC_HINTS)
+
+
+def discover_links(crawler, source, max_depth=2, max_pages=40):
+    """
+    Breadth-first crawl from the seed pages, collecting PDF links.
+
+    Stays on the source's own domain, caps the number of HTML pages fetched,
+    and prefers links that look like document listings. The cap matters more
+    than the depth: at one request per 2s per domain, an uncapped crawl of a
+    municipal site would run for hours and hammer a public server.
+    """
+    domain = source["domain"]
     found = []
-    for seed in source["seeds"]:
-        if not crawler.allowed(seed):
-            print(f"  robots.txt disallows {seed} - skipping")
+    seen_pages = set()
+    # (url, depth); seeds first, then whatever looks document-shaped.
+    frontier = [(s, 0) for s in source["seeds"]]
+    pages_fetched = 0
+
+    while frontier and pages_fetched < max_pages:
+        page_url, depth = frontier.pop(0)
+        if page_url in seen_pages:
+            continue
+        seen_pages.add(page_url)
+
+        if not crawler.allowed(page_url):
             continue
         try:
-            r = crawler.get(seed)
-        except Exception as e:
-            print(f"  failed {seed}: {type(e).__name__}")
+            r = crawler.get(page_url)
+        except Exception:
             continue
         if r is None or r.status_code != 200:
-            print(f"  HTTP {r.status_code if r else '?'} {seed}")
             continue
+        ctype = r.headers.get("Content-Type", "")
+        if "html" not in ctype.lower():
+            continue
+        pages_fetched += 1
 
         soup = BeautifulSoup(r.text, "html.parser")
+        next_level = []
         for a in soup.find_all("a", href=True):
             href = a["href"].strip()
-            if ".pdf" not in href.lower():
+            if not href or href.startswith(("#", "mailto:", "javascript:")):
                 continue
-            full = urljoin(seed, href)
-            if urlparse(full).scheme not in ("http", "https"):
+            full = urljoin(page_url, href)
+            parsed = urlparse(full)
+            if parsed.scheme not in ("http", "https"):
                 continue
-            found.append((full, seed))
+            # Same organisation only. Subdomains are allowed because these
+            # sites routinely serve files from a separate file host.
+            if domain not in parsed.netloc:
+                continue
+
+            if ".pdf" in href.lower():
+                found.append((full.split("#")[0], page_url))
+            elif depth < max_depth and _looks_like_doc_page(href, a.get_text()):
+                next_level.append((full.split("#")[0], depth + 1))
+
+        frontier.extend(next_level)
+
+    print(f"  crawled {pages_fetched} pages")
     # Dedupe, preserving order.
     seen, out = set(), []
     for url, src in found:
@@ -206,20 +256,32 @@ def discover_links(crawler, source):
     return out
 
 
-def discover_pmc(crawler, source):
+# Drupal ships placeholder uploads on a fresh install. They are real PDFs but
+# carry no municipal content, so they would pollute the corpus statistic.
+PLACEHOLDER_NAMES = ("dummy", "sample", "test.pdf", "placeholder")
+
+
+def discover_pmc(crawler, source, max_pages=25):
     """
-    PMC's document listings are client-side rendered, so link scraping returns
-    only the footer certificate. The files live on a Drupal backend exposing
-    JSON:API. We walk the file resource, which lists every uploaded document.
+    PMC's listings are client-side rendered, so link scraping returns only the
+    footer certificate. The documents live on a Drupal backend exposing
+    JSON:API.
+
+    Two things the first attempt got wrong:
+      - it walked the unfiltered file list, which is mostly banner images, so
+        it timed out long before reaching any real document
+      - it followed the API's own `next` links, which are http:// and redirect
     """
     found = []
-    url = f"{source['jsonapi']}/file/file?page[limit]=50"
+    base = source["jsonapi"]
+    url = (f"{base}/file/file"
+           "?filter%5Bfilemime%5D=application%2Fpdf&page%5Blimit%5D=50")
     pages = 0
-    while url and pages < 20:
+    while url and pages < max_pages:
         try:
             r = crawler.get(url)
         except Exception as e:
-            print(f"  PMC JSON:API failed: {type(e).__name__}")
+            print(f"  PMC JSON:API stopped after {pages} pages: {type(e).__name__}")
             break
         if r is None or r.status_code != 200:
             print(f"  PMC JSON:API HTTP {r.status_code if r else '?'}")
@@ -228,15 +290,63 @@ def discover_pmc(crawler, source):
             payload = r.json()
         except ValueError:
             break
+
         for item in payload.get("data", []):
-            uri = (item.get("attributes") or {}).get("uri", {})
+            attrs = item.get("attributes") or {}
+            uri = attrs.get("uri") or {}
             href = uri.get("url") if isinstance(uri, dict) else None
-            if href and href.lower().endswith(".pdf"):
-                found.append((urljoin("https://webadmin.pmc.gov.in", href),
-                              source["jsonapi"]))
-        url = (payload.get("links") or {}).get("next", {}).get("href")
+            if not href or not href.lower().endswith(".pdf"):
+                continue
+            name = (attrs.get("filename") or "").lower()
+            if any(p in name for p in PLACEHOLDER_NAMES):
+                continue
+            found.append((urljoin("https://webadmin.pmc.gov.in", href), base))
+
+        nxt = (payload.get("links") or {}).get("next", {}).get("href")
+        url = nxt.replace("http://", "https://") if nxt else None
         pages += 1
+
+    print(f"  walked {pages} API pages")
     return found
+
+
+def select_balanced_sample(conn, per_source, seed):
+    """
+    Choose which pending URLs to download: a random sample, capped per source.
+
+    Two research requirements, not conveniences.
+
+    Capping per source: the brief forbids taking hundreds of files from one
+    portal, because a single department shares one template and one font, so
+    an unbalanced corpus would measure that department rather than the
+    problem. PMC alone offers 1200+ documents and would otherwise dominate.
+
+    Sampling randomly rather than taking the first N: discovery order follows
+    upload date, so the first N is a slice of one time period. The Phase 1
+    number is a prevalence estimate, and a biased sample makes it an estimate
+    of the wrong population. The seed is fixed so the draw is reproducible
+    and can be reported in the write-up.
+    """
+    rng = random.Random(seed)
+    rows = conn.execute(
+        "SELECT url, source_key FROM discovered WHERE status='pending'"
+    ).fetchall()
+
+    by_source = {}
+    for url, key in rows:
+        by_source.setdefault(key, []).append((url, key))
+
+    selected = []
+    for key in sorted(by_source):
+        pool = by_source[key]
+        rng.shuffle(pool)
+        selected.extend(pool[:per_source])
+        if len(pool) > per_source:
+            print(f"  {key}: sampling {per_source} of {len(pool)} discovered")
+        else:
+            print(f"  {key}: taking all {len(pool)} discovered")
+    rng.shuffle(selected)   # interleave domains so rate limiting overlaps
+    return selected
 
 
 def record_discovery(conn, urls, source_key):
@@ -333,7 +443,13 @@ def main():
                     help="discover and record URLs, download nothing")
     ap.add_argument("--source", help="limit to one source key")
     ap.add_argument("--limit", type=int, default=None,
-                    help="max downloads this run")
+                    help="max downloads this run (applied after sampling)")
+    ap.add_argument("--per-source", type=int, default=60,
+                    help="max documents per issuing body (default 60, so six "
+                         "bodies reach the 200-400 target without any one "
+                         "portal dominating)")
+    ap.add_argument("--seed", type=int, default=20260807,
+                    help="RNG seed for the sample, fixed for reproducibility")
     args = ap.parse_args()
 
     sources = config.SOURCES
@@ -377,9 +493,7 @@ def main():
         print("Nothing downloaded. Re-run without --dry-run to collect.")
         return
 
-    pending = conn.execute(
-        "SELECT url, source_key FROM discovered WHERE status='pending'"
-    ).fetchall()
+    pending = select_balanced_sample(conn, args.per_source, args.seed)
     if args.limit:
         pending = pending[:args.limit]
 
