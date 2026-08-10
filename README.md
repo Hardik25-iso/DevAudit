@@ -4,9 +4,7 @@ Research project investigating a specific, under-examined failure mode in Indian
 government PDFs: **a text layer that extracts "successfully" and is
 linguistically wrong.**
 
-> **Note on the name.** This project is *not* IndicDLP. IndicDLP (ICDAR 2025) is
-> separate, existing work that this project cites as related work and builds on
-> for layout parsing. See [Scope](#scope).
+
 
 ## The problem
 
