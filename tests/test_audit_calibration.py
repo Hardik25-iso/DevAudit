@@ -23,6 +23,7 @@ import font_audit as fa  # noqa: E402
 
 
 FIXTURES_DIR = Path(
+
     os.environ.get("DEVAUDIT_FIXTURES", r"C:\Users\HARDIK\Desktop\docs")
 )
 
