@@ -49,6 +49,22 @@ LEGACY_PATTERNS = [
     "chanakya", "shivaji", "yogeshweb", "yogesh",
     "aksharyogini", "millennium", "walkman",
     "agra", "amruta", "shusha", "ism",
+    # --- added from the first corpus run -------------------------------
+    # These were surfaced by the UNCLASSIFIED bucket and then confirmed by
+    # reading their extracted text, not assumed from the name:
+    #   MGShree      -> "ukxij egkuxjikfydk"  (= नागपूर महानगरपालिका, ASCII-remapped)
+    #   Sakal Marathi-> "´ÖÖ×ÆüŸÖß®Öã×ÃŸÖÛêú"  (8-bit garbage, 0 Devanagari chars)
+    #   DVBW-TTBhima -> same 8-bit garbage
+    # The DVBW-TT family was previously caught only when the face name
+    # happened to be listed (Surekh, Yogesh), so Bhima and Radhika slipped
+    # through. Matching the family prefix fixes the whole set at once.
+    "dvbw", "dvot", "dvb-tt",
+    "mgshree", "mg-shree", "sakal",
+    "bhima", "radhika",
+    # Kiran produces corrupted Devanagari rather than ASCII, so it is a
+    # CMap-level failure rather than a classic 8-bit font. Listed because the
+    # output is wrong either way; flagged here as needing a closer look.
+    "kiran",
 ]
 
 # Fonts we can positively vouch for. A font NOT on this list is not assumed
@@ -70,6 +86,8 @@ KNOWN_GOOD = [
     "microsoft sans serif", "aptos", "adobefangsong", "fangsong",
     "malgun", "meiryo", "yu gothic", "sitka", "selawik", "leelawadee",
     "bahnschrift", "ink free", "javanese", "myanmar", "nirmala ui",
+    # Confirmed Latin faces that the corpus run surfaced as unidentified.
+    "myriad", "minion", "frutiger", "univers", "optima", "baskerville",
     # Unicode-correct Indic faces
     "mangal", "aparajita", "nirmala", "kokila", "utsaah", "sanskrit text",
     "arial unicode", "noto sans devanagari", "noto serif devanagari",
@@ -117,10 +135,23 @@ MIN_DEV_CHARS = 100         # below this, the rate is not meaningful
 SCAN_CHARS_PER_PAGE = 25    # under this, there is no usable text layer
 
 
+def _norm(s):
+    """
+    Lowercase and strip everything that is not a letter or digit.
+
+    Font names are written inconsistently by the tools that embed them:
+    'Book Antiqua' and 'BookAntiqua', 'DV-TTSurekh' and 'DVTTSurekh' are the
+    same face. Normalising both sides means one pattern covers every spelling,
+    instead of the list needing an entry per punctuation variant. BookAntiqua
+    was flagged as unidentified purely because the list said 'book antiqua'.
+    """
+    return re.sub(r"[^a-z0-9]", "", s.lower())
+
+
 def _match_any(name, patterns):
-    """Case-insensitive substring match against a pattern list."""
-    low = name.lower()
-    return [p for p in patterns if p in low]
+    """Substring match, insensitive to case, spaces and punctuation."""
+    low = _norm(name)
+    return [p for p in patterns if _norm(p) in low]
 
 
 def _base_name(raw):
