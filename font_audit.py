@@ -63,6 +63,13 @@ KNOWN_GOOD = [
     "zapfdingbats", "liberation", "dejavu", "roboto", "open sans", "lato",
     "montserrat", "poppins", "nunito", "raleway", "source sans", "pt sans",
     "ms mincho", "ms gothic", "mincho", "gothic", "batang", "simsun",
+    # Added after the first real corpus run: all three were flagged
+    # UNCLASSIFIED as ordinary Latin faces simply missing from this list.
+    # Keeping the list current is maintenance, not a design flaw -- the
+    # detector is meant to fail toward "look at this".
+    "microsoft sans serif", "aptos", "adobefangsong", "fangsong",
+    "malgun", "meiryo", "yu gothic", "sitka", "selawik", "leelawadee",
+    "bahnschrift", "ink free", "javanese", "myanmar", "nirmala ui",
     # Unicode-correct Indic faces
     "mangal", "aparajita", "nirmala", "kokila", "utsaah", "sanskrit text",
     "arial unicode", "noto sans devanagari", "noto serif devanagari",
@@ -119,6 +126,20 @@ def _match_any(name, patterns):
 def _base_name(raw):
     """Strip the 'ABCDEF+' subset prefix that PDF producers prepend."""
     return raw.split("+", 1)[1] if "+" in raw[:8] else raw
+
+
+def _safe(s):
+    """
+    Strip unpaired surrogates so the row can be written to a UTF-8 CSV.
+
+    Real government PDFs carry junk in their metadata dictionaries -- the
+    first corpus run crashed writing the report, not reading the documents.
+    Note the text layer itself was clean of surrogates; this is Producer and
+    Creator only.
+    """
+    if not isinstance(s, str):
+        return s
+    return s.encode("utf-8", "replace").decode("utf-8")
 
 
 def collect_fonts(doc):
@@ -204,8 +225,8 @@ def audit(path):
 
     row["pages"] = doc.page_count
     meta = doc.metadata or {}
-    row["producer"] = str(meta.get("producer") or "")[:60]
-    row["creator"] = str(meta.get("creator") or "")[:60]
+    row["producer"] = _safe(str(meta.get("producer") or ""))[:60]
+    row["creator"] = _safe(str(meta.get("creator") or ""))[:60]
 
     fonts = collect_fonts(doc)
     legacy, unknown = classify_fonts(fonts)
