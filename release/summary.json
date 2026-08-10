@@ -1,0 +1,39 @@
+{
+  "generated_at": "2026-08-10T16:39:42+00:00",
+  "n_documents": 76,
+  "n_issuing_bodies": 5,
+  "verdict_counts": {
+    "CLEAN": 23,
+    "LEGACY": 17,
+    "SCAN": 33,
+    "SUSPECT": 3
+  },
+  "by_issuing_body": {
+    "Maharashtra Housing and Area Development Authority": {
+      "CLEAN": 9,
+      "LEGACY": 6,
+      "SCAN": 22
+    },
+    "Maharashtra Metro Rail Corporation (Pune Metro)": {
+      "SCAN": 9,
+      "CLEAN": 3
+    },
+    "Nagpur Municipal Corporation": {
+      "SCAN": 2,
+      "CLEAN": 4,
+      "SUSPECT": 1,
+      "LEGACY": 2
+    },
+    "Nashik Municipal Corporation": {
+      "SUSPECT": 1,
+      "CLEAN": 3,
+      "LEGACY": 6
+    },
+    "Pimpri-Chinchwad Municipal Corporation": {
+      "CLEAN": 4,
+      "SUSPECT": 1,
+      "LEGACY": 3
+    }
+  },
+  "note": "Documents are not redistributed. Sources do not share a licence and at least one restricts redistribution; see LICENSING.md. Use rebuild_corpus.py to reconstruct from source URLs."
+}
