@@ -261,7 +261,89 @@ def discover_links(crawler, source, max_depth=2, max_pages=40):
 PLACEHOLDER_NAMES = ("dummy", "sample", "test.pdf", "placeholder")
 
 
-def discover_pmc(crawler, source, max_pages=25):
+def _probe_pool_size(crawler, base_url, hi=40000):
+    """
+    Binary-search the number of records behind a JSON:API filter.
+
+    Drupal's JSON:API exposes no total count and no `last` link, but asking
+    for one record at a given offset answers "are there at least this many?"
+    in a single cheap request. About 15 requests pins the size, versus the
+    500+ needed to enumerate.
+    """
+    lo = 0
+    while lo < hi - 1:
+        mid = (lo + hi) // 2
+        try:
+            r = crawler.get(f"{base_url}&page%5Boffset%5D={mid}")
+            got = bool(r is not None and r.status_code == 200
+                       and r.json().get("data"))
+        except Exception:
+            got = False
+        if got:
+            lo = mid
+        else:
+            hi = mid
+    return lo + 1
+
+
+def discover_pmc(crawler, source, want=90, seed=20260807):
+    """
+    Sample PMC's document set by drawing random offsets.
+
+    PMC publishes ~25,000 PDFs behind a Drupal JSON:API that returns them in
+    upload order. Enumerating the list is both slow (deep pagination degrades
+    badly) and unnecessary: to estimate a prevalence we need an unbiased
+    sample, not a census.
+
+    The earlier implementation walked the first N pages, which produced a
+    sample of the *oldest* 5% of PMC's documents rather than of PMC. Sampling
+    randomly from a truncated pool does not fix that, because the bias sits in
+    the pool rather than the draw. Drawing random offsets across the whole
+    range does fix it, in roughly 90 requests instead of 500.
+
+    `want` is deliberately above the per-source cap so placeholder rejects do
+    not shrink the pool below the 60 we draw from it.
+    """
+    base = source["jsonapi"]
+    one = (f"{base}/file/file"
+           "?filter%5Bfilemime%5D=application%2Fpdf&page%5Blimit%5D=1")
+
+    size = _probe_pool_size(crawler, one)
+    print(f"  pool size ~{size} PDFs; drawing {want} random offsets")
+
+    rng = random.Random(seed)
+    offsets = rng.sample(range(size), min(want, size))
+
+    found = []
+    for i, off in enumerate(offsets, 1):
+        try:
+            r = crawler.get(f"{one}&page%5Boffset%5D={off}")
+        except Exception:
+            continue
+        if r is None or r.status_code != 200:
+            continue
+        try:
+            data = r.json().get("data") or []
+        except ValueError:
+            continue
+        for item in data:
+            attrs = item.get("attributes") or {}
+            uri = attrs.get("uri") or {}
+            href = uri.get("url") if isinstance(uri, dict) else None
+            if not href or not href.lower().endswith(".pdf"):
+                continue
+            if any(p in (attrs.get("filename") or "").lower()
+                   for p in PLACEHOLDER_NAMES):
+                continue
+            found.append((urljoin("https://webadmin.pmc.gov.in", href), base))
+        if i % 30 == 0:
+            print(f"    {i}/{len(offsets)} offsets sampled")
+
+    print(f"  sampled {len(found)} documents from across the full range")
+    return found
+
+
+def discover_pmc_enumerate(crawler, source, max_pages=400):
     """
     PMC's listings are client-side rendered, so link scraping returns only the
     footer certificate. The documents live on a Drupal backend exposing
@@ -271,6 +353,13 @@ def discover_pmc(crawler, source, max_pages=25):
       - it walked the unfiltered file list, which is mostly banner images, so
         it timed out long before reaching any real document
       - it followed the API's own `next` links, which are http:// and redirect
+
+    A third, subtler error: the page cap was low enough that discovery stopped
+    partway through the file list. The API returns files in upload order, so a
+    truncated walk is not a random subset of PMC's documents -- it is one slice
+    of time. Sampling randomly from a truncated pool still yields a biased
+    estimate, because the bias is in the pool rather than the draw. The cap is
+    now high enough to exhaust the list; `next` disappearing is what ends it.
     """
     found = []
     base = source["jsonapi"]
