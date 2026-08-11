@@ -93,8 +93,22 @@ Making unclassifiable input visible is the fix.
 
 ## Documents
 
+- [`docs/phase1-results.md`](docs/phase1-results.md) — **the go/no-go result**,
+  breakdowns by issuing body, font discovery, and known limits
 - [`docs/phase1-recon.md`](docs/phase1-recon.md) — audit tool findings and the
   source reachability survey
+- [`docs/LICENSING.md`](docs/LICENSING.md) — what each source permits, and why
+  the release is the manifest rather than the documents
+
+## Result
+
+**Phase 1: GO.** `LEGACY + SUSPECT = 27.8%` across 407 documents from 6
+issuing bodies, against a pre-registered threshold of 15%. Only 31.4% of the
+corpus has a text layer that is both present and trustworthy.
+
+Two independent corruption mechanisms were found, not one: legacy 8-bit fonts,
+and correct Unicode fonts carrying wrong ToUnicode CMaps. Font-name matching is
+blind to the second, which accounts for 12.8 of the 27.8 points.
 
 ## Licence / data ethics
 
