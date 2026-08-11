@@ -65,6 +65,10 @@ LEGACY_PATTERNS = [
     # CMap-level failure rather than a classic 8-bit font. Listed because the
     # output is wrong either way; flagged here as needing a closer look.
     "kiran",
+    # --- second corpus run (407 documents) ------------------------------
+    # APS-C-DV-* : ten variants across MHADA, all emitting 8-bit garbage
+    # ("‚ã. ‰ãŠ. ‡ãŠã¾ããÃÊã¾ããÞãñ") with zero Devanagari characters.
+    "aps-c-dv", "aps-dv", "apsdv",
 ]
 
 # Fonts we can positively vouch for. A font NOT on this list is not assumed
@@ -88,6 +92,8 @@ KNOWN_GOOD = [
     "bahnschrift", "ink free", "javanese", "myanmar", "nirmala ui",
     # Confirmed Latin faces that the corpus run surfaced as unidentified.
     "myriad", "minion", "frutiger", "univers", "optima", "baskerville",
+    "gabriola", "angsana", "cordia", "browallia", "adobe devanagari",
+    "adobe fan", "adobe song", "adobe ming", "kokila", "raavi", "vrinda",
     # Unicode-correct Indic faces
     "mangal", "aparajita", "nirmala", "kokila", "utsaah", "sanskrit text",
     "arial unicode", "noto sans devanagari", "noto serif devanagari",
@@ -110,6 +116,20 @@ NUKTA = "़"
 
 DEV_RANGE = re.compile(r"[ऀ-ॿ]")
 DEV_DIGIT_RE = re.compile(r"[०-९]")
+
+# The 8-bit legacy signature. A non-Unicode Devanagari font maps glyphs onto
+# single bytes, so its text extracts as a dense run of Latin-1 supplement and
+# Latin-Extended letters plus stray typographic punctuation:
+#   "xÉÉÊ¶ÉEò ¨É½þÉxÉMÉ®ú{ÉÉÊ±ÉEòÉ"  = नाशिक महानगरपालिका
+#   "‚ã. ‰ãŠ. ‡ãŠã¾ããÃÊã¾ããÞãñ"
+#
+# This matters because some producers give fonts deliberately opaque subset
+# names (TT274t00, TT2F1t00) that no name pattern can ever match. Detecting
+# the output signature catches those, and is the same move as testing
+# Devanagari structure rather than trusting the font list.
+MOJIBAKE_RANGE = re.compile(r"[¡-ɏ̀-ͯ‘-‰]")
+MOJIBAKE_RATIO = 0.20      # of non-whitespace characters
+MOJIBAKE_MIN_CHARS = 200   # ignore short fragments
 
 # The core validity test, and the reason it replaces the old detached-matra
 # regex: a matra is valid ONLY directly after a consonant (optionally nukta-ed).
@@ -285,6 +305,20 @@ def audit(path):
     row["virama_then_matra"] = len(VIRAMA_THEN_MATRA.findall(text))
     row["detached_matras"] = len(DETACHED_MATRA.findall(text))
 
+    # Mojibake signature: dense non-ASCII Latin with no Devanagari at all, in
+    # a document whose fonts are embedded without Unicode mappings. Computed
+    # over non-whitespace characters so layout does not dilute it.
+    body = "".join(text.split())
+    row["mojibake_chars"] = len(MOJIBAKE_RANGE.findall(body))
+    row["mojibake_ratio"] = (round(row["mojibake_chars"] / len(body), 3)
+                             if body else 0.0)
+    row["mojibake_signature"] = int(
+        len(body) >= MOJIBAKE_MIN_CHARS
+        and row["dev_chars"] == 0
+        and row["mojibake_ratio"] >= MOJIBAKE_RATIO
+        and row["fonts_no_unicode"] > 0
+    )
+
     if row["dev_chars"] >= MIN_DEV_CHARS:
         row["invalid_rate_per_1k"] = round(
             1000.0 * row["invalid_matras"] / row["dev_chars"], 2)
@@ -299,7 +333,10 @@ def audit(path):
         # alone and BEFORE extracting text — so a PDF with fonts but no
         # extractable characters was misfiled as having a text layer.
         verdict = "SCAN"
-    elif legacy:
+    elif legacy or row["mojibake_signature"]:
+        # Either the font is named in the list, or the extracted text carries
+        # the unmistakable 8-bit signature. The second clause is what catches
+        # producers who ship deliberately anonymous subset names.
         verdict = "LEGACY"
     elif (row["invalid_rate_per_1k"] >= SUSPECT_RATE_PER_1K
           and row["invalid_matras"] >= SUSPECT_MIN_ABS):
