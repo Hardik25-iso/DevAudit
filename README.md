@@ -28,27 +28,24 @@ seeing a stack trace.
 
 Phase 1 was a go/no-go gate: is this common enough to be worth a project?
 
-**360 documents, 5 issuing bodies, random sample, fixed seed.**
+**643 documents, 6 issuing bodies, random sample, fixed seed.**
 
 | | n | % |
 |---|---|---|
-| No text layer (scan) | 152 | 42.2% |
-| **Legacy non-Unicode fonts** | **61** | **16.9%** |
-| **Suspect (invalid Devanagari)** | **48** | **13.3%** |
-| Unclassified font | 1 | 0.3% |
-| Clean Unicode | 98 | 27.2% |
+| No text layer (scan) | 266 | 41.4% |
+| **Legacy non-Unicode fonts** | **104** | **16.2%** |
+| **Suspect (invalid Devanagari)** | **81** | **12.6%** |
+| Unclassified font | 7 | 1.1% |
+| Clean Unicode | 185 | 28.8% |
 
-`LEGACY + SUSPECT = 30.3%`, against a threshold of 15% fixed before any data
-was collected. **Only 27.2% of the corpus has a text layer that is both
+`LEGACY + SUSPECT = 28.8%`, against a threshold of 15% fixed before any data
+was collected. **Only 28.8% of the corpus has a text layer that is both
 present and trustworthy.**
 
-Among documents that actually have a text layer, the corrupt rate is
-**52.4%**.
-
-> A further 283 collected documents are not included here, Pune Municipal
-> Corporation's entire sample among them. They live on external storage that
-> was detached mid-run, so they are pending re-audit rather than lost. PMC is
-> therefore absent from this table — see [Limits](#limits).
+Set the scans aside — they're an OCR problem, already well studied, and not
+what this measures. Among the 377 documents that *do* have a text layer,
+**49.1% of it is wrong.** Roughly half the machine-readable Devanagari
+published by these bodies does not say what it appears to say.
 
 ### It isn't one problem, it's two
 
@@ -68,12 +65,12 @@ The second class is 12.8 of those 27.8 points. Every font name looks fine.
 
 | Body | n | scan | legacy | suspect | clean |
 |---|---|---|---|---|---|
-| Pimpri-Chinchwad MC | 65 | 15% | 15% | **58%** | 11% |
-| Nashik MC | 70 | 13% | **47%** | 9% | 30% |
-| MHADA | 96 | 65% | 17% | 1% | 18% |
-| Nagpur MC | 69 | 49% | 3% | 4% | 43% |
-| Pune Metro | 60 | 62% | 0% | 0% | 38% |
-| PMC | — | pending re-audit | | | |
+| Pimpri-Chinchwad MC | 115 | 14% | 18% | **57%** | 10% |
+| Nashik MC | 115 | 13% | **43%** | 9% | 31% |
+| MHADA | 144 | 65% | 17% | 1% | 17% |
+| Pune Municipal Corp | 49 | 53% | 6% | 4% | 35% |
+| Nagpur MC | 115 | 45% | 3% | 3% | 49% |
+| Pune Metro | 105 | 60% | 1% | 0% | 38% |
 
 Marathi-language municipal documents are where the corruption lives. Bodies
 publishing mostly English tender notices have a scan problem instead — real,
@@ -126,9 +123,14 @@ visible is what surfaced four undocumented legacy families:
 | `DVBW-TTBhima`, `DVBW-TTRadhika` | same |
 | `APS-C-DV-*` (10 variants) | `‚ã. ‰ãŠ. ‡ãŠã¾ããÃÊã¾ããÞãñ` |
 
-67 distinct legacy variants observed in total, against a starting list of
+**94 distinct legacy variants observed in total**, against a starting list of
 about 20 patterns. Each new family was confirmed by reading its extracted
 text, never inferred from the name.
+
+Some of those names are not names at all — `TT2C1t00`, `Z@RAF1C.tmp`. The last
+one is a Windows temporary filename that leaked into the PDF as a font
+identifier. Nothing that reads font names could ever classify these, which is
+the whole argument for detecting the output signature instead.
 
 **The threshold was fixed before the data existed.** Pre-registering is what
 stops a number drifting to meet whatever you find, and it's what would have
@@ -163,12 +165,15 @@ Worth stating plainly, because they bound what the 27.8% means.
    pattern list to simulate an undocumented font.
 4. **Homepage-reachable bias in early sampling** was corrected by depth
    crawling, but discovery still cannot see documents behind form navigation.
-5. **PMC is not yet measured.** Its documents come from a Drupal JSON:API
-   holding ~25,000 PDFs in upload order; the first sample walked only the
-   oldest 1,227 of them, which is a slice of time rather than a sample of PMC.
-   That draw has been discarded and replaced by random-offset sampling across
-   the full range, but the redrawn documents sit on detached storage awaiting
-   re-audit. PMC's rate is unknown, not zero.
+5. **PMC's first sample was biased and had to be discarded.** Its documents
+   come from a Drupal JSON:API holding ~25,000 PDFs in upload order, and the
+   first pass walked only the oldest 1,227 — a slice of time rather than a
+   sample of PMC. It reported 0% legacy. Redrawn by random offset across the
+   full range, PMC reports 10% corrupt. Sampling method, not data, accounted
+   for the entire difference.
+6. **PMC's n is 49**, smaller than the other bodies, because random-offset
+   sampling draws from a set that includes non-document uploads. Its figures
+   carry correspondingly wider error bars.
 
 ## Data and licensing
 

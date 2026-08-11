@@ -61,7 +61,13 @@ def open_db():
 def run_audit(conn, reaudit=False):
     q = "SELECT sha256, stored_path FROM documents"
     if not reaudit:
-        q += " WHERE sha256 NOT IN (SELECT sha256 FROM audit)"
+        # Retry previous failures as well as new documents. Errors here are
+        # usually transient - detached external storage, a locked file - and a
+        # document that failed once must not be excluded from the corpus
+        # permanently, because that silently biases the sample toward whatever
+        # was readable at the time.
+        q += (" WHERE sha256 NOT IN "
+              "(SELECT sha256 FROM audit WHERE verdict != 'ERROR')")
     rows = conn.execute(q).fetchall()
     if not rows:
         print("nothing new to audit")
