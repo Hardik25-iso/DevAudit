@@ -1,24 +1,24 @@
 {
-  "generated_at": "2026-08-12T04:18:30+00:00",
+  "generated_at": "2026-08-12T04:33:15+00:00",
   "n_documents": 1064,
   "n_issuing_bodies": 8,
   "verdict_counts": {
     "SCAN": 416,
-    "LEGACY": 205,
-    "CLEAN": 289,
-    "UNCLASSIFIED": 15,
-    "SUSPECT": 139
+    "LEGACY": 260,
+    "CLEAN": 249,
+    "UNCLASSIFIED": 6,
+    "SUSPECT": 133
   },
   "by_issuing_body": {
     "Lucknow Municipal Corporation": {
       "SCAN": 16,
-      "LEGACY": 27,
-      "CLEAN": 7,
-      "UNCLASSIFIED": 4
+      "LEGACY": 31,
+      "CLEAN": 5,
+      "UNCLASSIFIED": 2
     },
     "Maharashtra Housing and Area Development Authority": {
-      "CLEAN": 31,
-      "LEGACY": 41,
+      "CLEAN": 30,
+      "LEGACY": 42,
       "SCAN": 127,
       "SUSPECT": 2
     },
@@ -34,17 +34,16 @@
       "LEGACY": 6
     },
     "Nashik Municipal Corporation": {
-      "SUSPECT": 18,
-      "CLEAN": 53,
-      "LEGACY": 90,
+      "SUSPECT": 15,
+      "CLEAN": 17,
+      "LEGACY": 131,
       "SCAN": 25,
-      "UNCLASSIFIED": 4
+      "UNCLASSIFIED": 2
     },
     "Patna Municipal Corporation": {
       "CLEAN": 3,
       "SCAN": 6,
-      "SUSPECT": 1,
-      "LEGACY": 3
+      "LEGACY": 4
     },
     "Pimpri-Chinchwad Municipal Corporation": {
       "CLEAN": 17,
@@ -55,10 +54,9 @@
     },
     "Pune Municipal Corporation": {
       "SCAN": 56,
-      "CLEAN": 41,
-      "UNCLASSIFIED": 5,
-      "LEGACY": 4,
-      "SUSPECT": 6
+      "CLEAN": 40,
+      "LEGACY": 12,
+      "SUSPECT": 4
     }
   },
   "note": "Documents are not redistributed. Sources do not share a licence and at least one restricts redistribution; see LICENSING.md. Use rebuild_corpus.py to reconstruct from source URLs."

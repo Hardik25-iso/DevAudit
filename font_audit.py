@@ -213,6 +213,120 @@ def _match_any(name, patterns):
     return [p for p in patterns if _norm(p) in low]
 
 
+# ---------------------------------------------------------------------------
+# Per-font output analysis
+# ---------------------------------------------------------------------------
+# PyMuPDF tags every text span with the font that rendered it, so text can be
+# accumulated per font and each font judged on its own output instead of the
+# document's. That matters because a document mixes fonts: a legacy Devanagari
+# face sitting beside ordinary English headers produces a blended signal that
+# sits between the two populations and trips no threshold.
+#
+# The same measurements, taken per font rather than per document, separate
+# cleanly. Measured across 450 documents, using fonts identifiable BY NAME as
+# labelled ground truth (41 legacy, 53 known-good):
+#
+#                      known-good max      legacy
+#   mojibake ratio           0.070         median 0.684
+#   ASCII 'k' frequency      0.021         p90    0.182
+#   symbol-inside-word       2.67 /1000    39.68 /1000
+#
+# The third of those is the payoff. At document level that signal was useless
+# — clean documents reached 53.8 hits per 1000 characters against 58.1 for
+# affected ones — and was rejected twice for exactly that reason. Per font it
+# separates by a factor of 15, because it is no longer diluted by whatever
+# else the document contains.
+#
+# Thresholds sit well inside each gap rather than at its edge.
+PERFONT_MAX_PAGES = 8
+PERFONT_CAP_CHARS = 2500     # per font; enough to judge, bounded for speed
+PERFONT_MIN_CHARS = 200      # below this a font cannot be judged
+# The 'k' test needs far more text than the others. A digital-signature block
+# rendered in Myriad Pro -- "Vihar Ashok Bodke Digitally signed by ..." -- hit
+# 7.8% 'k' across 154 characters purely because Indian personal names are
+# dense in that letter. Genuine Kruti-Dev documents run to thousands of
+# characters, so demanding a real sample costs nothing and removes a whole
+# class of false positive that short signature blocks would otherwise create.
+PERFONT_ASCII_MIN_LETTERS = 200
+PERFONT_MOJIBAKE = 0.15      # good max 0.070
+PERFONT_ASCII_K = 0.05       # good max 0.021
+PERFONT_SYMBOL = 10.0        # good max 2.67
+PERFONT_ENGLISH = 0.15       # secondary gate on the symbol rule only
+
+# Symbols that legacy encodings map Devanagari onto, appearing *between*
+# letters. Ordinary text puts '$' before digits, not inside words.
+SYMBOL_IN_WORD = re.compile(r"[A-Za-z][$«»§°º¤¥][A-Za-z]")
+
+# A small stop-word list, used only to confirm that text claiming to be Latin
+# actually reads as English before the symbol rule clears it.
+COMMON_ENGLISH = set("""
+the of and to in for a is on at by with as from or be this that shall will not
+are was were which any such other all no notice tender date name department
+office corporation municipal work works city road water public list sr page
+total amount rate item description year month day time signature government
+india state district ward zone plan report annexure form application account
+balance schedule contents table
+""".split())
+
+
+def collect_font_text(doc, max_pages=PERFONT_MAX_PAGES):
+    """Accumulate rendered text per font, capped for speed."""
+    per = {}
+    for pno in range(min(doc.page_count, max_pages)):
+        try:
+            page = doc[pno].get_text("dict")
+        except Exception:
+            continue
+        for block in page.get("blocks", []):
+            for line in block.get("lines", []):
+                for span in line.get("spans", []):
+                    name = _base_name(span.get("font") or "")
+                    if not name:
+                        continue
+                    cur = per.get(name, "")
+                    if len(cur) < PERFONT_CAP_CHARS:
+                        per[name] = cur + (span.get("text") or "") + " "
+    return per
+
+
+def classify_font_output(text):
+    """
+    Judge one font by its own rendered text.
+
+    Returns a short reason string when the output is legacy-encoded, or None
+    when the font is fine or there is too little text to tell. Silence means
+    "no evidence", never "clean" -- that distinction is what keeps the
+    detector from manufacturing corruption it cannot see.
+    """
+    body = "".join(text.split())
+    if len(body) < PERFONT_MIN_CHARS:
+        return None
+
+    # Real Devanagari present means the font maps to Unicode correctly. Whether
+    # that Devanagari is *valid* is the structural check's job, not this one.
+    if len(DEV_RANGE.findall(text)) > 20:
+        return None
+
+    mojibake = len(MOJIBAKE_RANGE.findall(body)) / len(body)
+    if mojibake >= PERFONT_MOJIBAKE:
+        return f"8bit({mojibake:.2f})"
+
+    letters = [c for c in text if c.isascii() and c.isalpha()]
+    if len(letters) >= PERFONT_ASCII_MIN_LETTERS:
+        k = letters.count(DEVANAGARI_AA_ASCII) / len(letters)
+        if k >= PERFONT_ASCII_K:
+            return f"ascii-remap(k={k:.3f})"
+
+    symbols = 1000.0 * len(SYMBOL_IN_WORD.findall(text)) / len(body)
+    if symbols >= PERFONT_SYMBOL:
+        tokens = re.findall(r"[A-Za-z]{2,}", text.lower())
+        english = (sum(1 for w in tokens if w in COMMON_ENGLISH) / len(tokens)
+                   if len(tokens) >= 20 else 0.0)
+        if english < PERFONT_ENGLISH:
+            return f"symbol-remap({symbols:.0f}/1k)"
+    return None
+
+
 def _base_name(raw):
     """Strip the 'ABCDEF+' subset prefix that PDF producers prepend."""
     return raw.split("+", 1)[1] if "+" in raw[:8] else raw
@@ -325,6 +439,21 @@ def audit(path):
     row["legacy_fonts"] = ";".join(legacy)
     row["unknown_fonts"] = ";".join(unknown)
 
+    # Per-font output analysis, before the document is closed. Catches legacy
+    # encodings whose font names are auto-generated subset identifiers, which
+    # no name-based rule can ever match.
+    bad_fonts = {}
+    try:
+        for fname, ftext in collect_font_text(doc).items():
+            reason = classify_font_output(ftext)
+            if reason:
+                bad_fonts[fname] = reason
+    except Exception:
+        pass
+    row["legacy_by_output"] = ";".join(
+        f"{n}={r}" for n, r in sorted(bad_fonts.items()))
+    row["n_legacy_by_output"] = len(bad_fonts)
+
     # Text sample. 30 pages is plenty for triage and keeps large budgets cheap.
     last = min(doc.page_count, 30)
     try:
@@ -384,11 +513,17 @@ def audit(path):
         # alone and BEFORE extracting text — so a PDF with fonts but no
         # extractable characters was misfiled as having a text layer.
         verdict = "SCAN"
-    elif legacy or row["mojibake_signature"] or row["ascii_remap_signature"]:
-        # Three routes in: the font is named in the list, the text carries the
-        # 8-bit signature (Marathi), or it carries the ASCII-remap signature
-        # (Hindi). The latter two are what catch producers shipping
-        # deliberately anonymous subset names like TT313t00.
+    elif (legacy or row["n_legacy_by_output"]
+          or row["mojibake_signature"] or row["ascii_remap_signature"]):
+        # Four routes in, in decreasing order of how much they depend on the
+        # font list being complete:
+        #   - the font is named in LEGACY_PATTERNS
+        #   - a font was convicted by its own rendered output (per-font)
+        #   - the whole document carries the 8-bit signature (Marathi)
+        #   - the whole document carries the ASCII-remap signature (Hindi)
+        # The per-font route is the only one that catches a legacy font used
+        # for a minority of a document's text, since the document-level
+        # signals get diluted below their thresholds in that case.
         verdict = "LEGACY"
     elif (row["invalid_rate_per_1k"] >= SUSPECT_RATE_PER_1K
           and row["invalid_matras"] >= SUSPECT_MIN_ABS):

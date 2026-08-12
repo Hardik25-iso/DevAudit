@@ -33,18 +33,18 @@ Phase 1 was a go/no-go gate: is this common enough to be worth a project?
 | | n | % |
 |---|---|---|
 | No text layer (scan) | 416 | 39.1% |
-| **Legacy non-Unicode fonts** | **205** | **19.3%** |
-| **Suspect (invalid Devanagari)** | **139** | **13.1%** |
-| Unclassified font | 16 | 1.5% |
-| Clean Unicode | 288 | 27.1% |
+| **Legacy non-Unicode fonts** | **260** | **24.4%** |
+| **Suspect (invalid Devanagari)** | **133** | **12.5%** |
+| Unclassified font | 6 | 0.6% |
+| Clean Unicode | 249 | 23.4% |
 
-`LEGACY + SUSPECT = 32.3%`, against a threshold of 15% fixed before any data
-was collected. **Only 27.1% of the corpus has a text layer that is both
+`LEGACY + SUSPECT = 36.9%`, against a threshold of 15% fixed before any data
+was collected. **Only 23.4% of the corpus has a text layer that is both
 present and trustworthy.**
 
 Set the scans aside — they're an OCR problem, already well studied, and not
 what this measures. Among the 648 documents that *do* carry a text layer,
-**53.1% of it is wrong.** More than half the machine-readable Devanagari these
+**60.6% of it is wrong.** More than half the machine-readable Devanagari these
 bodies publish does not say what it appears to say.
 
 ### It isn't one problem, it's three
@@ -63,25 +63,25 @@ font-name matching is blind to two of them:
   usually after a PDF post-processor. Extracts as Devanagari that is
   *structurally impossible* — vowel signs starting words, two matras adjacent.
 
-That last class alone is 13.1 of the 32.3 points, and every font name in those
+That last class alone is 12.5 of the 36.9 points, and every font name in those
 files looks perfectly respectable.
 
 ### It isn't uniform either
 
 | Body | State | n | scan | legacy | suspect | clean |
 |---|---|---|---|---|---|---|
+| Nashik MC | MH | 190 | 13% | **69%** | 8% | 9% |
+| **Lucknow MC** | **UP** | 54 | 30% | **57%** | 0% | 9% |
 | Pimpri-Chinchwad MC | MH | 183 | 12% | 18% | **60%** | 9% |
-| **Lucknow MC** | **UP** | 54 | 30% | **50%** | 0% | 13% |
-| Nashik MC | MH | 190 | 13% | **47%** | 9% | 28% |
-| Patna MC | BR | 13 | 46% | 23% | 8% | 23% |
-| MHADA | MH | 201 | 63% | 20% | 1% | 15% |
-| Pune Municipal Corp | MH | 112 | 50% | 4% | 5% | 37% |
+| Patna MC | BR | 13 | 46% | 31% | 0% | 23% |
+| MHADA | MH | 201 | 63% | 21% | 1% | 15% |
+| Pune Municipal Corp | MH | 112 | 50% | 11% | 4% | 36% |
 | Nagpur MC | MH | 183 | 48% | 3% | 2% | 48% |
 | Pune Metro | MH | 128 | 60% | 1% | 0% | 38% |
 
 **The finding generalises beyond Marathi, and gets worse.** Lucknow — Hindi,
-Uttar Pradesh, a different font ecosystem entirely — has the highest legacy
-rate of any body at 50%. This is not a Marathi tooling quirk.
+Uttar Pradesh, a different font ecosystem entirely — sits at 57% legacy,
+second only to Nashik. This is not a Marathi tooling quirk.
 
 Patna is included for completeness but `n = 13` is too small to carry weight.
 
@@ -118,8 +118,9 @@ python -m pytest tests/              # calibration tests
 
 ## Design decisions worth knowing
 
-**Classify by output, not by font name.** Three times the name-based approach
-missed things, and every time the fix was to look at what the text actually is:
+**Classify by output, not by font name.** Every time the name-based approach
+missed something, the fix was to look at what the text actually is. **32% of
+the legacy documents are caught by output alone** — no font name matched:
 
 - The **structural check** finds impossible Devanagari — vowel signs starting
   words, two matras adjacent — without consulting any font list. On one
@@ -134,13 +135,36 @@ missed things, and every time the fix was to look at what the text actually is:
   in written Hindi, so encoded text inherits that frequency onto English's
   rarest letter. Measured across the corpus, genuine English tops out at 2.5%
   `k` while Kruti-Dev-encoded Hindi starts at 10.2%; the threshold sits in the
-  gap with 2× margin either side. Adding it moved Lucknow from 33% to 50%
-  legacy.
+  gap with 2× margin either side.
+- The **per-font detector** runs all of the above *per font* rather than per
+  document, using PyMuPDF's span-level font tagging. This is the one that
+  mattered most. A document mixes fonts, so a legacy face sitting beside
+  English headers produces a blended signal that trips no threshold. Measured
+  across 450 documents against fonts identifiable by name, the same signals
+  separate cleanly once undiluted:
 
-Two weaker discriminators were measured for that last one and **rejected**:
-vowel ratio and punctuation-inside-words both overlap legitimate text. A
-detector that over-fires pushes the headline *up*, which is the flattering
-direction and therefore the one to distrust most.
+  | | known-good max | legacy |
+  |---|---|---|
+  | mojibake ratio | 0.070 | median 0.684 |
+  | ASCII `k` | 0.021 | p90 0.182 |
+  | symbol-in-word | 2.67 /1k | 39.68 /1k |
+
+  That third row is the payoff. At document level it was useless — clean
+  documents reached 53.8 hits per 1000 characters against 58.1 for corrupt
+  ones — and was rejected twice for exactly that reason. Per font it separates
+  by 15×. **Validated at precision 1.000**, zero false positives across 91
+  known-good fonts.
+
+**Detectors are rejected more often than shipped.** Vowel ratio and
+punctuation-inside-words were both measured and dropped for overlapping
+legitimate text. A detector that over-fires pushes the headline *up*, which is
+the flattering direction and therefore the one to distrust most.
+
+The one false positive that did slip through is instructive: a digital
+signature block rendered in Myriad Pro — `"Vihar Ashok Bodke Digitally signed
+by …"` — hit 7.8% `k` across 154 characters, purely because Indian personal
+names are dense in that letter. A calibration test caught it, and the fix was a
+sample-size floor rather than a threshold change.
 
 **`UNCLASSIFIED` is a bucket, not an error.** When a font can't be identified
 either way, saying so beats guessing. Every defect found in the original audit
@@ -185,7 +209,7 @@ a solved problem for twenty years. That gap is what this project occupies.
 
 ## Limits
 
-Worth stating plainly, because they bound what the 32.3% means.
+Worth stating plainly, because they bound what the 36.9% means.
 
 1. **Three states, all Devanagari.** Maharashtra (Marathi) and the Hindi belt
    (UP, Bihar) are covered. Southern-language bodies — Tamil, Telugu, Kannada,

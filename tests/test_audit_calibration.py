@@ -207,3 +207,66 @@ def test_ascii_remap_threshold_sits_inside_the_measured_gap():
     not tuned to a single document.
     """
     assert 0.025 < fa.ASCII_REMAP_RATIO < 0.102
+
+
+# ---------------------------------------------------------------------------
+# Per-font detector.
+#
+# Validated against fonts identifiable by name across 450 documents:
+# precision 1.000 (zero false positives on 91 known-good fonts), recall 0.968
+# on fonts it can actually judge. The tests below pin both directions.
+# ---------------------------------------------------------------------------
+
+# Real span text from a Nashik Municipal Corporation PDF: नाशिक महानगरपालिका
+EIGHT_BIT_SPAN = "xÉÉÊ¶ÉEò ¨É½þÉxÉMÉ®ú{ÉÉÊ±ÉEòÉ ºÉÉ´ÉÇVÉÊxÉEò ¤ÉÉÆvÉEòÉ¨É Ê´É¦ÉÉMÉ " * 8
+# Real span text from Pune Municipal Corporation, third encoding family
+SYMBOL_SPAN = "^l.^glmlzaG$l @l_vº$ UVl àdlfG$ mvTn ^glYI`mlzaG$l _l§Ln G$ " * 8
+ENGLISH_SPAN = (
+    "Account Description of Items Schedule Balance as at the close of the "
+    "year for the municipal corporation water supply department works "
+) * 8
+DEVANAGARI_SPAN = "नाशिक महानगरपालिका सार्वजनिक बांधकाम विभाग निविदा सूचना " * 8
+
+
+def test_perfont_flags_eight_bit_span():
+    assert fa.classify_font_output(EIGHT_BIT_SPAN) is not None
+
+
+def test_perfont_flags_symbol_remap_span():
+    """
+    The third encoding family. This is the case that motivated moving to
+    per-font analysis: at document level the signal reached 53.8 hits per
+    1000 chars in clean documents against 58.1 in affected ones, which is no
+    separation at all. Per font, known-good tops out at 2.67 against 39.68.
+    """
+    assert fa.classify_font_output(SYMBOL_SPAN) is not None
+
+
+def test_perfont_leaves_english_alone():
+    """The direction that matters: over-firing inflates the headline."""
+    assert fa.classify_font_output(ENGLISH_SPAN) is None
+
+
+def test_perfont_defers_on_real_devanagari():
+    """
+    A font emitting genuine Devanagari maps to Unicode correctly. Whether that
+    Devanagari is *valid* belongs to the structural check, so this detector
+    must abstain rather than double-count.
+    """
+    assert fa.classify_font_output(DEVANAGARI_SPAN) is None
+
+
+def test_perfont_abstains_on_too_little_text():
+    """Silence must mean 'no evidence', never 'clean'."""
+    assert fa.classify_font_output("xÉÉÊ¶ÉEò") is None
+
+
+def test_perfont_thresholds_sit_inside_measured_gaps():
+    """
+    Measured per font across 450 documents, known-good maxima were:
+    mojibake 0.070, ASCII k 0.021, symbol-in-word 2.67 per 1000 chars.
+    Each threshold must stay clear of its observed ceiling.
+    """
+    assert fa.PERFONT_MOJIBAKE > 0.070
+    assert fa.PERFONT_ASCII_K > 0.021
+    assert fa.PERFONT_SYMBOL > 2.67
