@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-08-12T04:08:06+00:00",
+  "generated_at": "2026-08-12T04:18:30+00:00",
   "n_documents": 1064,
   "n_issuing_bodies": 8,
   "verdict_counts": {
     "SCAN": 416,
     "LEGACY": 205,
-    "CLEAN": 288,
-    "UNCLASSIFIED": 16,
+    "CLEAN": 289,
+    "UNCLASSIFIED": 15,
     "SUSPECT": 139
   },
   "by_issuing_body": {
@@ -24,8 +24,7 @@
     },
     "Maharashtra Metro Rail Corporation (Pune Metro)": {
       "SCAN": 77,
-      "CLEAN": 49,
-      "UNCLASSIFIED": 1,
+      "CLEAN": 50,
       "LEGACY": 1
     },
     "Nagpur Municipal Corporation": {

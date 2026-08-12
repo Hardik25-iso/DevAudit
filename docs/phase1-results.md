@@ -99,7 +99,55 @@ by reading extracted text rather than inferred from the name:
 | `APS-C-DV-*` (10 variants) | `‚ã. ‰ãŠ. ‡ãŠã¾ããÃÊã¾ããÞãñ` |
 | `TT274t00`, `TT313t00`, `Z@RAF1C.tmp` | `xÉÉÊ¶ÉEò`, `xzke&cjkoudyk` |
 
-**68 fonts remain unidentified** and are recorded rather than guessed at.
+### Classifying the 68 unidentified fonts
+
+All 68 were classified by extracting text **per font** — PyMuPDF tags each text
+span with the font that rendered it, so each font is judged on its own output
+rather than the document's.
+
+| Classification | n | Evidence |
+|---|---|---|
+| Legacy, 8-bit (Marathi style) | 8 | mojibake ratio 0.55–0.76 |
+| Legacy, ASCII remap (Hindi style) | 10 | `k` frequency 0.096–0.362 |
+| **Legacy, third family** | **9** | see below |
+| Devanagari present but invalid | 4 | `महापािलका आयु यांचे` |
+| Devanagari, no violations | 5 | benign |
+| Genuine Latin | 2 | `Account Description of Items Schedule` |
+| Too little text to judge | 30 | used for a handful of glyphs each |
+
+**Only 2 of the 68 were genuine Latin fonts.** 31 are confirmed legacy. The
+remaining 35 are either benign Devanagari or carry too little text to call.
+
+Of the 68, **65 are auto-generated subset identifiers** (`TT2F3t00`,
+`TTE2A70A90t00`, `Z@RAF1C.tmp`) rather than font names. They are deliberately
+*not* added to `LEGACY_PATTERNS`: the same string denotes a different font in a
+different PDF, so matching on them would misfire. Only three real names turned
+up in the whole set — `Algerian`, `MV Boli`, `RomanT` — and those went to the
+known-good list.
+
+### A third legacy encoding family
+
+Nine fonts emit text that is neither Latin-1 mojibake nor Kruti-Dev ASCII:
+
+```
+TT270t00       ^l.^glmlzaG$l @l_vº$ UVl àdlfG$
+TT2C0t00       mvTn mnQ= Jln`mR=n zf.f.G«$. 334, 335/1@/336
+Z@RAF3D.tmp    godmd¥Îmr doVZ d A§eXmZ {ZYr {hñgm
+```
+
+Mojibake ratio sits at 0.04–0.20, below the 8-bit threshold, and `k` frequency
+is 0.000, so neither existing detector fires. The signature is `$`, `«` and `§`
+appearing *between* letters.
+
+Measured at document level, that signal does not separate: clean documents
+reach 53.8 hits per 1000 characters against 58.1 for the affected ones. **No
+detector was added.** The documents concerned are largely caught anyway — as
+`SCAN`, `SUSPECT`, or via other fonts in the same file — so the cost is
+confined to a handful of PMC documents sitting in `UNCLASSIFIED`.
+
+A per-font detector looks more promising than a per-document one, since
+per-font attribution separates these cleanly by inspection. That is future
+work, not a shipped claim.
 
 ### How each corrupt document was caught
 

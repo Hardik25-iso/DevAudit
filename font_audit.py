@@ -95,6 +95,11 @@ KNOWN_GOOD = [
     "gabriola", "angsana", "cordia", "browallia", "adobe devanagari",
     "adobe fan", "adobe song", "adobe ming", "kokila", "raavi", "vrinda",
     "tw cen", "berlin sans", "castellar", "copperplate", "eras", "perpetua",
+    # Confirmed genuine after classifying the unidentified set by output.
+    # These three were the only real font names among 68; the rest were
+    # auto-generated subset identifiers, which are deliberately not listed
+    # here because the same string means a different font in another PDF.
+    "algerian", "mv boli", "mvboli", "romant",
     # Unicode-correct Indic faces
     "mangal", "aparajita", "nirmala", "kokila", "utsaah", "sanskrit text",
     "arial unicode", "noto sans devanagari", "noto serif devanagari",
