@@ -1,70 +1,89 @@
 # Phase 1 Results — Go/No-Go
 
-**Decision: GO.** `LEGACY + SUSPECT = 36.9%`, against a threshold of 15% fixed
+**Decision: GO.** `LEGACY + SUSPECT` is 36.5% weighting each issuing body
+equally, or 48.4% pooling every document, against a threshold of 15% fixed
 before any data was collected.
 
 ## Corpus
 
-1,064 documents from 8 issuing bodies across 3 states, drawn randomly with a
-fixed seed (`20260807`) and capped per body so no single portal dominates.
-Full provenance — source URL, SHA-256, size, retrieval timestamp — in
-`manifest.sqlite`, joined to every audit measurement.
+1,602 documents from 8 issuing bodies across 3 states, drawn randomly with a
+fixed seed (`20260807`). Full provenance — source URL, SHA-256, size,
+retrieval timestamp — in `manifest.sqlite`, joined to every audit measurement.
 
 ## Headline
 
 | Bucket | n | % |
 |---|---|---|
-| No text layer (scan) | 416 | 39.1% |
-| **Legacy non-Unicode fonts** | **260** | **24.4%** |
-| **Suspect (invalid Devanagari)** | **133** | **12.5%** |
-| Unclassified font | 6 | 0.6% |
-| Clean Unicode | 249 | 23.4% |
+| No text layer (scan) | 505 | 31.5% |
+| **Legacy non-Unicode fonts** | **596** | **37.2%** |
+| **Suspect (invalid Devanagari)** | **180** | **11.2%** |
+| Unclassified font | 11 | 0.7% |
+| Clean Unicode | 310 | 19.4% |
 
-**Only 23.4% of these documents have a text layer that is both present and
-trustworthy.**
+### Which number to quote
 
-Set the scans aside — they are an OCR problem, well studied, and not what this
-measures. Among the 648 documents that *do* carry a text layer, **60.6% of it
-is wrong.** Three fifths of the machine-readable Devanagari published by these
-bodies does not say what it appears to say.
+| | `LEGACY + SUSPECT` |
+|---|---|
+| Pooled — every document equal | 48.4% |
+| **Macro — every issuing body equal** | **36.5%** |
+
+**The macro figure is the defensible one.** Repeated collection passes left the
+bodies very unequally sized, and the largest is also the worst affected: Nashik
+is 607 of 1,602 documents (38%) and runs at 80% corrupt. Pooling therefore lets
+a single municipal portal set the headline. The macro average asks "how bad is
+a typical issuing body", which is the question the project poses.
+
+The 12-point gap between them is itself a finding: corruption is concentrated,
+not evenly spread, so any figure quoted without a weighting scheme is
+under-specified.
+
+Among the 1,097 documents that carry a text layer at all, **70.7% carry a wrong
+one.**
 
 ## By issuing body
 
 | Body | State | n | scan | legacy | suspect | uncl | clean |
 |---|---|---|---|---|---|---|---|
-| Nashik MC | MH | 190 | 13% | **69%** | 8% | 1% | 9% |
+| Nashik MC | MH | 607 | 10% | **72%** | 8% | 0% | 9% |
+| Pimpri-Chinchwad MC | MH | 204 | 11% | 18% | **61%** | 1% | 9% |
 | **Lucknow MC** | **UP** | 54 | 30% | **57%** | 0% | 4% | 9% |
-| Pimpri-Chinchwad MC | MH | 183 | 12% | 18% | **60%** | 1% | 9% |
-| Patna MC | BR | 13 | 46% | 31% | 0% | 0% | 23% |
-| MHADA | MH | 201 | 63% | 21% | 1% | 0% | 15% |
-| Pune Municipal Corp | MH | 112 | 50% | 11% | 4% | 0% | 36% |
-| Nagpur MC | MH | 183 | 48% | 3% | 2% | 0% | 48% |
-| Pune Metro | MH | 128 | 60% | 1% | 0% | 1% | 38% |
+| MHADA | MH | 281 | 62% | 22% | 1% | 0% | 15% |
+| Patna MC | BR | 38 | 39% | 21% | 11% | 11% | 18% |
+| Pune Municipal Corp | MH | 55 | 49% | 15% | 0% | 0% | 36% |
+| Nagpur MC | MH | 235 | 46% | 5% | 1% | 0% | 47% |
+| Pune Metro | MH | 128 | 60% | 1% | 0% | 0% | 39% |
 
-The spread is enormous — 78% corrupt at PCMC, 1% at Pune Metro — and it is not
+The spread is enormous — 80% corrupt at Nashik, 1% at Pune Metro — and it is not
 random. What predicts corruption is whether a body publishes in an Indian
 language at all. Municipal corporations writing Marathi or Hindi cluster at the
 top; bodies publishing mostly English tender notices have a scan problem
 instead.
 
-Patna is reported for completeness, but `n = 13` is too small to carry weight.
+Patna (n=38) and PMC (n=55) are the smallest samples and carry the widest
+error bars.
 
 ## The finding is not Marathi-specific
 
-| Region | n | LEGACY+SUSPECT | scan |
-|---|---|---|---|
-| Maharashtra (Marathi) | 997 | 35.9% | 39.5% |
-| Hindi belt (UP, Bihar) | 67 | **52.2%** | 32.8% |
+| Region | n | LEGACY+SUSPECT |
+|---|---|---|
+| Maharashtra (Marathi) | 1,510 | 48.5% |
+| Hindi belt (UP, Bihar) | 92 | 46.7% |
 
 This was the most plausible deflating explanation for the whole result — that
 the corruption tracks a Marathi-specific font ecosystem (`Shree-Dev`,
 `Sakal Marathi`, `DVBW-TT`) rather than Indian government publishing generally.
-It does not. Lucknow, in Hindi, with an entirely different font ecosystem, sits
-at 57% legacy, second only to Nashik, and the Hindi belt as a whole runs 16
-points above Maharashtra.
+It does not: the two regions land within two points of each other.
 
-The Hindi-belt sample is small and should be expanded before the number is
-quoted precisely. The direction is not in doubt.
+**Correction to an earlier draft.** A previous version of this document
+reported the Hindi belt at 52.2% against Maharashtra's 35.9% and concluded the
+problem was *worse* outside Maharashtra. That gap was an artifact of
+Maharashtra being under-sampled on Nashik at the time, and it closed as the
+corpus filled out. The supportable claim is that the finding is not
+Marathi-specific — not that it is worse elsewhere.
+
+The Hindi-belt sample is still only 92 documents across two bodies, and cannot
+be widened easily — see the S3WAAS limit in `LICENSING.md`. Treat the regional
+comparison as consistent rather than precise.
 
 ## Three corruption mechanisms
 
@@ -83,12 +102,12 @@ until it was fixed.
 (Mangal, Aparajita, Adobe Devanagari) whose ToUnicode tables are wrong, usually
 after a PDF post-processor. Extracts as Devanagari that is *structurally
 impossible* — vowel signs beginning words, two matras adjacent. Accounts for
-12.5 of the 36.9 points, and every font name in these files looks perfectly
-respectable.
+11.2 points of the pooled rate, and every font name in these files looks
+perfectly respectable.
 
 ## Font discovery
 
-**121 distinct legacy font variants observed**, against a starting list of
+**141 distinct legacy font variants observed**, against a starting list of
 about 20 patterns. Families the starting list missed entirely, each confirmed
 by reading extracted text rather than inferred from the name:
 
@@ -174,7 +193,8 @@ Devanagari and are deliberately deferred to the structural check. On fonts it
 can actually judge, recall is 30/31.
 
 Effect: `LEGACY` rose from 205 to 260 documents, `UNCLASSIFIED` fell from 16 to
-6, and the headline moved from 32.3% to 36.9%. Spot-checking the documents it
+6, and the headline moved from 32.3% to 36.9% on the 1,064-document corpus it
+was measured against. Spot-checking the documents it
 newly convicted found `xÉÉÊ¶ÉEò ¨É½þÉxÉMÉ®ú{ÉÉÊ±ÉEòÉ` (= नाशिक महानगरपालिका) at
 mojibake ratios of 0.46–0.76 — unambiguously legacy-encoded.
 
@@ -197,10 +217,10 @@ to: a detector firing in the flattering direction on a small sample.
 
 | Route | n |
 |---|---|
-| Font name matched the list | 176 |
-| **Output signature only — no name matched** | **84** |
+| Font name matched the list | 404 |
+| **Output signature only — no name matched** | **192** |
 
-Those 84 — 32% of all legacy documents — are the argument for the whole approach. `Z@RAF1C.tmp` is a Windows
+Those 192 — 32% of all legacy documents — are the argument for the whole approach. `Z@RAF1C.tmp` is a Windows
 temporary filename that leaked into a PDF as a font identifier; `TT313t00` is a
 deliberately opaque subset name. No name-based classifier could ever handle
 them, and a third of the legacy documents would have been missed.
@@ -222,7 +242,8 @@ plausible-looking numbers:
   Corrected by depth crawling.
 
 **The headline is robust to the font list.** Adding four font families and two
-output-signature detectors moved it from 26.3% to 36.9%, and reclassified
+output-signature detectors moved it from 26.3% to 36.9% on a like-for-like
+corpus, and reclassified
 documents largely moved *between* `SUSPECT` and `LEGACY` while already being
 counted. Two independent signals cover the same files, so the number does not
 depend on the font list being complete — which was the main threat to its

@@ -1,0 +1,275 @@
+
+======================================================================
+1602 documents, 8 issuing bodies
+  no text layer (scan)              505  ( 31.5%)
+  legacy non-Unicode fonts          596  ( 37.2%)
+  suspect (invalid Devanagari)      180  ( 11.2%)
+  unclassified font                  11  (  0.7%)
+  clean Unicode                     310  ( 19.4%)
+======================================================================
+LEGACY+SUSPECT = 48.4%   UNCLASSIFIED = 0.7%
+  pooled (every document equal)     48.4%
+  macro  (every body equal, n=8)   36.5%
+  largest body is 38% of the corpus (Nashik Municipal Corporation, n=607)
+DECISION: GO - the corrupted-text-layer problem is real.
+
+--- by issuing body ---
+                                          n   scan  legacy   susp   uncl  clean
+Nashik Municipal Corporation            607    10%     72%     8%     0%     9%
+Maharashtra Housing and Area Develop    281    62%     22%     1%     0%    15%
+Nagpur Municipal Corporation            235    46%      5%     1%     0%    47%
+Pimpri-Chinchwad Municipal Corporati    204    11%     18%    61%     1%     9%
+Maharashtra Metro Rail Corporation (    128    60%      1%     0%     0%    39%
+Pune Municipal Corporation               55    49%     15%     0%     0%    36%
+Lucknow Municipal Corporation            54    30%     57%     0%     4%     9%
+Patna Municipal Corporation              38    39%     21%    11%    11%    18%
+
+--- by document type ---
+                                          n   scan  legacy   susp   uncl  clean
+municipal                              1138    20%     46%    16%     1%    17%
+notice/tender                           281    62%     22%     1%     0%    15%
+tender                                  128    60%      1%     0%     0%    39%
+budget/circular                          55    49%     15%     0%     0%    36%
+
+--- 141 distinct legacy font variants observed ---
+    APS-C-DV-Alankar
+    APS-C-DV-Alankar,Bold
+    APS-C-DV-Murali
+    APS-C-DV-Murali,Bold
+    APS-C-DV-Prakash
+    APS-C-DV-Prakash,Bold
+    APS-C-DV-Prakash,BoldItalic
+    APS-C-DV-Prakash-Bold
+    APS-C-DV-Prakash-Normal
+    APS-C-DV-Priyanka
+    APS-C-DV-Priyanka,Bold
+    APS-C-DV-Priyanka-Bold
+    APS-C-DV-Priyanka-Normal
+    APS-C-DV-Ramayan
+    APS-C-DV-Shweta
+    APS-C-DV-Shweta,Bold
+    APS-C-DV-Virat
+    AkrutiDevBharatiBold
+    AkrutiDevBharatiNormal
+    AkrutiDevBhaskarBold
+    AkrutiDevBhaskarNormal
+    AkrutiDevChanakya07Bold
+    AkrutiDevChanakya07Normal
+    AkrutiDevNewPriyaExpandBold
+    AkrutiDevYoginiBold
+    AkrutiDevYoginiNormal
+    DV-TTDhruv
+    DV-TTDhruv,Bold
+    DV-TTDhruv,BoldItalic
+    DV-TTNatraj,BoldItalic
+    DV-TTShridhar
+    DV-TTShridhar,Bold
+    DV-TTSurekh
+    DV-TTSurekh,Bold
+    DV-TTSurekhEN
+    DV-TTSurekhEN,Bold
+    DV-TTYogesh
+    DV-TTYogesh,Bold
+    DV-TTYogesh,BoldItalic
+    DVB-TTDhruv
+    DVB-TTSurekh
+    DVB-TTSurekh,Bold
+    DVB-TTSurekh,BoldItalic
+    DVB-TTYogesh,Bold
+    DVB-TTYogesh,BoldItalic
+    DVBTTDhruvBold
+    DVBTTDhruvNormal
+    DVBTTShridharBold
+    DVBTTShridharBoldItalic
+    DVBTTShridharNormal
+    DVBTTSurekhBold
+    DVBTTSurekhENBold
+    DVBTTSurekhENNormal
+    DVBTTSurekhNormal
+    DVBTTYogeshBold
+    DVBTTYogeshNormal
+    DVBW-TTBhima
+    DVBW-TTBhima,Bold
+    DVBW-TTRadhika,Bold
+    DVBW-TTSurekh
+    DVBW-TTSurekh,Bold
+    DVBW-TTSurekhEN
+    DVBW-TTSurekhEN,Bold
+    DVBW-TTYogesh
+    DVBW-TTYogesh,Bold
+    DVBW-TTYogesh-Normal
+    DVBWTTSurekhBold
+    DVBWTTSurekhNormal
+    DVBWTTYogeshBold
+    DVBWTTYogeshNormal
+    DVI-TTYogesh
+    DVI-TTYogesh-Normal
+    DVOT-Surekh
+    DVOT-Surekh,Bold
+    DVOT-SurekhMR
+    DVOT-SurekhMR,Bold
+    DVOT-SurekhMR,Italic
+    DVOT-YogeshMR
+    DVOTSurekhBold
+    DVOTSurekhMRBold
+    DVOTSurekhMRNormal
+    DVOTSurekhNormal
+    DVOTYogeshMRBold
+    DVOTYogeshMRBold,Italic
+    DVOTYogeshMRNormal
+    DVTTDhruvBold
+    DVTTDhruvBoldItalic
+    DVTTDhruvNormal
+    DVTTShridharNormal
+    DVTTSurekhBold
+    DVTTSurekhNormal
+    DVTTYogeshBold
+    DVTTYogeshENBold
+    DVTTYogeshENBoldItalic
+    DVTTYogeshENItalic
+    DVTTYogeshENNormal
+    DVTTYogeshNormal
+    DVW-TTYogeshEN
+    DVWTTSurekhBold
+    DVWTTSurekhNormal
+    Kiran
+    Kruti Dev 010
+    Kruti Dev 010,Bold
+    Kruti Dev 040
+    Kruti Dev 040 Condensed
+    Kruti Dev 040 Wide
+    Kruti-Dev692
+    KrutiDev010
+    KrutiDev010Bold
+    KrutiDev010Condensed
+    KrutiDev020Bold
+    KrutiDev040
+    KrutiDev040Wide
+    KrutiDev050
+    KrutiDev050Wide
+    KrutiDev160
+    KrutiDevDisplay430
+    MG Shree
+    MG Shree+FPEF
+    MGShree
+    SDWTTSurekhNormal
+    SHREE-DEV-0708
+    SHREE-DEV-0709
+    SHREE-DEV-0713
+    SHREE-DEV-0715
+    SHREE-DEV7-0708
+    SHREE-DEV7-0708,Bold
+    SHREE-DEV7-0709
+    SHREE-DEV7-0713
+    SHREE-DEV7-0715
+    Sakal Marathi
+    SakalMarathi-Normal
+    SakalMarathi-Normal,Bold
+    SakalMarathi-Normal,Italic
+    Shivaji01
+    Shivaji05
+    Shree-Dev-0708
+    Shree-Dev-0708,Bold
+    Shree-Dev-0708,BoldItalic
+    Shree-Dev-0714
+    WalkmanChanakya901Normal
+
+--- 98 unidentified fonts (need classification) ---
+    .SFUI-Regular_wdth_opsz280000_GRAD_wght35C0000
+    APS-EML-DV-Prakash
+    Agency FB
+    Agency FB,Bold
+    AgencyFB
+    AgencyFB,Bold
+    Aharoni,Bold
+    BodoniMTBlack
+    Modern No. 20
+    Richa Wide
+    T10
+    T12
+    T14
+    T4
+    T8
+    TT102O00
+    TT1Ao00
+    TT1C4t00
+    TT1Co00
+    TT1E7t00
+    TT1E9t00
+    TT22Dt00
+    TT24Et00
+    TT250t00
+    TT25o00
+    TT286t00
+    TT292t00
+    TT2BDt00
+    TT2BFt00
+    TT2Bo00
+    TT2C0t00
+    TT2C5t00
+    TT2CAt00
+    TT2Co00
+    TT2D26t00
+    TT2D36t00
+    TT2F1t00
+    TT2F3t00
+    TT2F7t00
+    TT2F9t00
+    TT30o00
+    TT313t00
+    TT314t00
+    TT31o00
+    TT326t00
+    TT329t00
+    TT33o00
+    TT362t00
+    TT36o00
+    TT38o00
+    TT3B3t00
+    TT3B4t00
+    TT4B3t00
+    TT67Ft00
+    TT6C2t00
+    TT6CDt00
+    TT747t00
+    TT74Bt00
+    TT750t00
+    TT768t00
+    TT76Dt00
+    TT772t00
+    TT93t00
+    TT94t00
+    TTCFO00
+    TTD3O00
+    TTD5O00
+    TTD7O00
+    TTDBO00
+    TTDEO00
+    TTE16C1658t00
+    TTE1753388t00
+    TTE1EA7720t00
+    TTE1EC5E90t00
+    TTE2296EA0t00
+    TTE2A70A90t00
+    TTE2A71928t00
+    TTE2DBD780t00
+    TTE2O00
+    TTE30AB6E0t00
+    TTE31174E0t00
+    TTE33FA720t00
+    TTE36E3398t00
+    TTE3749550t00
+    TTE3B5A570t00
+    TTE3B62618t00
+    TTE3B64220t00
+    TTE3D4D8A0t00
+    TTE519EE20t00
+    TTE51A4008t00
+    TTE51B34B8t00
+    TTE51B3660t00
+    TTE5452BA0t00
+    TTE6O00
+    TTE9O00
+    Z@RAF1C.tmp
+    Z@RAF3D.tmp
+    Z@RAF5E.tmp

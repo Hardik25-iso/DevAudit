@@ -28,24 +28,32 @@ seeing a stack trace.
 
 Phase 1 was a go/no-go gate: is this common enough to be worth a project?
 
-**1,064 documents, 8 issuing bodies, three states, random sample, fixed seed.**
+**1,602 documents, 8 issuing bodies, three states, random sample, fixed seed.**
 
 | | n | % |
 |---|---|---|
-| No text layer (scan) | 416 | 39.1% |
-| **Legacy non-Unicode fonts** | **260** | **24.4%** |
-| **Suspect (invalid Devanagari)** | **133** | **12.5%** |
-| Unclassified font | 6 | 0.6% |
-| Clean Unicode | 249 | 23.4% |
+| No text layer (scan) | 505 | 31.5% |
+| **Legacy non-Unicode fonts** | **596** | **37.2%** |
+| **Suspect (invalid Devanagari)** | **180** | **11.2%** |
+| Unclassified font | 11 | 0.7% |
+| Clean Unicode | 310 | 19.4% |
 
-`LEGACY + SUSPECT = 36.9%`, against a threshold of 15% fixed before any data
-was collected. **Only 23.4% of the corpus has a text layer that is both
-present and trustworthy.**
+Two headline figures, because they disagree and the gap is the point:
+
+| | `LEGACY + SUSPECT` |
+|---|---|
+| Pooled — every document counts equally | 48.4% |
+| **Macro — every issuing body counts equally** | **36.5%** |
+
+**Quote the macro figure.** Repeated collection passes left the bodies very
+unequally sized: Nashik alone is 38% of the corpus and is the worst-affected
+body in it, so pooling lets one municipal portal steer the result. The macro
+average answers "how bad is a typical body", which is the question the project
+is actually asking. Both clear the 15% threshold fixed before any data existed.
 
 Set the scans aside — they're an OCR problem, already well studied, and not
-what this measures. Among the 648 documents that *do* carry a text layer,
-**60.6% of it is wrong.** More than half the machine-readable Devanagari these
-bodies publish does not say what it appears to say.
+what this measures. Among the 1,097 documents that *do* carry a text layer,
+**70.7% of it is wrong.**
 
 ### It isn't one problem, it's three
 
@@ -63,27 +71,32 @@ font-name matching is blind to two of them:
   usually after a PDF post-processor. Extracts as Devanagari that is
   *structurally impossible* — vowel signs starting words, two matras adjacent.
 
-That last class alone is 12.5 of the 36.9 points, and every font name in those
-files looks perfectly respectable.
+That last class alone is 11.2 points of the pooled rate, and every font name in
+those files looks perfectly respectable.
 
 ### It isn't uniform either
 
 | Body | State | n | scan | legacy | suspect | clean |
 |---|---|---|---|---|---|---|
-| Nashik MC | MH | 190 | 13% | **69%** | 8% | 9% |
+| Nashik MC | MH | 607 | 10% | **72%** | 8% | 9% |
+| Pimpri-Chinchwad MC | MH | 204 | 11% | 18% | **61%** | 9% |
 | **Lucknow MC** | **UP** | 54 | 30% | **57%** | 0% | 9% |
-| Pimpri-Chinchwad MC | MH | 183 | 12% | 18% | **60%** | 9% |
-| Patna MC | BR | 13 | 46% | 31% | 0% | 23% |
-| MHADA | MH | 201 | 63% | 21% | 1% | 15% |
-| Pune Municipal Corp | MH | 112 | 50% | 11% | 4% | 36% |
-| Nagpur MC | MH | 183 | 48% | 3% | 2% | 48% |
-| Pune Metro | MH | 128 | 60% | 1% | 0% | 38% |
+| MHADA | MH | 281 | 62% | 22% | 1% | 15% |
+| Patna MC | BR | 38 | 39% | 21% | 11% | 18% |
+| Pune Municipal Corp | MH | 55 | 49% | 15% | 0% | 36% |
+| Nagpur MC | MH | 235 | 46% | 5% | 1% | 47% |
+| Pune Metro | MH | 128 | 60% | 1% | 0% | 39% |
 
-**The finding generalises beyond Marathi, and gets worse.** Lucknow — Hindi,
-Uttar Pradesh, a different font ecosystem entirely — sits at 57% legacy,
-second only to Nashik. This is not a Marathi tooling quirk.
+The spread runs from 80% corrupt at Nashik to 1% at Pune Metro.
 
-Patna is included for completeness but `n = 13` is too small to carry weight.
+**The finding holds in both regions, at similar rates** — Maharashtra 48.5%,
+the Hindi belt 46.7%. An earlier draft of this README reported the Hindi belt
+as substantially worse; that gap was an artifact of Maharashtra being
+under-sampled on Nashik at the time, and it closed once the corpus filled out.
+The defensible claim is that the problem is not Marathi-specific, not that it
+is worse elsewhere.
+
+Patna and PMC both sit at n<60 and carry wide error bars.
 
 What actually predicts corruption is **who publishes in an Indian language at
 all**. Municipal corporations writing Marathi or Hindi cluster at the top.
@@ -179,7 +192,7 @@ visible is what surfaced four undocumented legacy families:
 | `DVBW-TTBhima`, `DVBW-TTRadhika` | same |
 | `APS-C-DV-*` (10 variants) | `‚ã. ‰ãŠ. ‡ãŠã¾ããÃÊã¾ããÞãñ` |
 
-**121 distinct legacy variants observed in total**, against a starting list of
+**141 distinct legacy variants observed in total**, against a starting list of
 about 20 patterns. Each new family was confirmed by reading its extracted
 text, never inferred from the name.
 
@@ -209,7 +222,7 @@ a solved problem for twenty years. That gap is what this project occupies.
 
 ## Limits
 
-Worth stating plainly, because they bound what the 36.9% means.
+Worth stating plainly, because they bound what these figures mean.
 
 1. **Three states, all Devanagari.** Maharashtra (Marathi) and the Hindi belt
    (UP, Bihar) are covered. Southern-language bodies — Tamil, Telugu, Kannada,
