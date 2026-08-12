@@ -1,53 +1,65 @@
 {
-  "generated_at": "2026-08-11T16:49:11+00:00",
-  "n_documents": 643,
-  "n_issuing_bodies": 6,
+  "generated_at": "2026-08-12T03:57:34+00:00",
+  "n_documents": 1064,
+  "n_issuing_bodies": 8,
   "verdict_counts": {
-    "CLEAN": 185,
-    "LEGACY": 104,
-    "SCAN": 266,
-    "SUSPECT": 81,
-    "UNCLASSIFIED": 7
+    "SCAN": 416,
+    "LEGACY": 194,
+    "CLEAN": 296,
+    "UNCLASSIFIED": 19,
+    "SUSPECT": 139
   },
   "by_issuing_body": {
+    "Lucknow Municipal Corporation": {
+      "SCAN": 16,
+      "LEGACY": 18,
+      "CLEAN": 13,
+      "UNCLASSIFIED": 7
+    },
     "Maharashtra Housing and Area Development Authority": {
-      "CLEAN": 24,
-      "LEGACY": 25,
-      "SCAN": 94,
-      "SUSPECT": 1
+      "CLEAN": 31,
+      "LEGACY": 41,
+      "SCAN": 127,
+      "SUSPECT": 2
     },
     "Maharashtra Metro Rail Corporation (Pune Metro)": {
-      "SCAN": 63,
-      "CLEAN": 40,
+      "SCAN": 77,
+      "CLEAN": 49,
       "UNCLASSIFIED": 1,
       "LEGACY": 1
     },
     "Nagpur Municipal Corporation": {
-      "SCAN": 52,
-      "CLEAN": 56,
+      "SCAN": 87,
+      "CLEAN": 87,
       "SUSPECT": 3,
-      "LEGACY": 4
+      "LEGACY": 6
     },
     "Nashik Municipal Corporation": {
-      "SUSPECT": 10,
-      "CLEAN": 36,
-      "LEGACY": 50,
-      "SCAN": 15,
+      "SUSPECT": 18,
+      "CLEAN": 53,
+      "LEGACY": 90,
+      "SCAN": 25,
       "UNCLASSIFIED": 4
     },
+    "Patna Municipal Corporation": {
+      "CLEAN": 5,
+      "SCAN": 6,
+      "SUSPECT": 1,
+      "LEGACY": 1
+    },
     "Pimpri-Chinchwad Municipal Corporation": {
-      "CLEAN": 12,
-      "SUSPECT": 65,
-      "LEGACY": 21,
-      "SCAN": 16,
-      "UNCLASSIFIED": 1
+      "CLEAN": 17,
+      "SUSPECT": 109,
+      "LEGACY": 33,
+      "SCAN": 22,
+      "UNCLASSIFIED": 2
     },
     "Pune Municipal Corporation": {
-      "SCAN": 26,
-      "CLEAN": 17,
-      "UNCLASSIFIED": 1,
-      "LEGACY": 3,
-      "SUSPECT": 2
+      "SCAN": 56,
+      "CLEAN": 41,
+      "UNCLASSIFIED": 5,
+      "LEGACY": 4,
+      "SUSPECT": 6
     }
   },
   "note": "Documents are not redistributed. Sources do not share a licence and at least one restricts redistribution; see LICENSING.md. Use rebuild_corpus.py to reconstruct from source URLs."

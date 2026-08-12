@@ -94,6 +94,7 @@ KNOWN_GOOD = [
     "myriad", "minion", "frutiger", "univers", "optima", "baskerville",
     "gabriola", "angsana", "cordia", "browallia", "adobe devanagari",
     "adobe fan", "adobe song", "adobe ming", "kokila", "raavi", "vrinda",
+    "tw cen", "berlin sans", "castellar", "copperplate", "eras", "perpetua",
     # Unicode-correct Indic faces
     "mangal", "aparajita", "nirmala", "kokila", "utsaah", "sanskrit text",
     "arial unicode", "noto sans devanagari", "noto serif devanagari",
@@ -130,6 +131,29 @@ DEV_DIGIT_RE = re.compile(r"[०-९]")
 MOJIBAKE_RANGE = re.compile(r"[¡-ɏ̀-ͯ‘-‰]")
 MOJIBAKE_RATIO = 0.20      # of non-whitespace characters
 MOJIBAKE_MIN_CHARS = 200   # ignore short fragments
+
+# KNOWN GAP -- Hindi-belt ASCII remapping.
+#
+# The signature above catches Marathi legacy fonts, which map onto the Latin-1
+# supplement. Kruti-Dev-style Hindi fonts map onto *plain ASCII* instead, so
+# they slip past it entirely:
+#
+#   "xzke&cjkoudyk¡] rglhy o ftyk&y[kuÅ"   = ग्राम...तहसील व जिला-लखनऊ
+#   "ljdkjh xtV] mRrj izns'k"              = सरकारी गजट, उत्तर प्रदेश
+#
+# Two discriminators were measured against the corpus and both were rejected
+# as unsafe on their own:
+#   - vowel ratio: corrupt docs sit at 0.088-0.185, but clean documents reach
+#     down to 0.192, so any workable threshold clips real text
+#   - punctuation inside words ([, ], {, }, = map to Devanagari here): corrupt
+#     docs reach 46/1000 chars, but clean documents with tables and formulas
+#     reach 34, so the distributions overlap
+#
+# A conjunction of both, gated on dev_chars == 0 and embedded fonts lacking
+# ToUnicode, looks promising but is not yet validated. Shipping an unvalidated
+# detector would inflate the headline in the flattering direction, which is the
+# specific failure this project exists to avoid. Affected documents currently
+# land in UNCLASSIFIED, which is the correct place for "we cannot tell".
 
 # The core validity test, and the reason it replaces the old detached-matra
 # regex: a matra is valid ONLY directly after a consonant (optionally nukta-ed).

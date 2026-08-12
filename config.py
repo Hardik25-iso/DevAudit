@@ -75,6 +75,27 @@ SOURCES = [
         "seeds": ["https://www.pcmcindia.gov.in/"],
         "doc_type": "municipal",
     },
+    # --- Hindi belt -------------------------------------------------------
+    # Added to test whether the Maharashtra finding generalises. Both bodies
+    # publish in Hindi, which uses the same Devanagari script, so the audit
+    # applies unchanged. Two rather than one deliberately: with a single new
+    # body there is no way to separate "the Hindi belt differs" from "this
+    # particular body differs", and Maharashtra already showed a 57-point
+    # spread between PCMC and Pune Metro.
+    {
+        "key": "patna_mc",
+        "issuing_body": "Patna Municipal Corporation",
+        "domain": "pmc.bihar.gov.in",
+        "seeds": ["https://pmc.bihar.gov.in/"],
+        "doc_type": "municipal",
+    },
+    {
+        "key": "lucknow_mc",
+        "issuing_body": "Lucknow Municipal Corporation",
+        "domain": "lmc.up.nic.in",
+        "seeds": ["https://lmc.up.nic.in/"],
+        "doc_type": "municipal",
+    },
     {
         "key": "pmc",
         "issuing_body": "Pune Municipal Corporation",

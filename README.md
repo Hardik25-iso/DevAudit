@@ -28,24 +28,24 @@ seeing a stack trace.
 
 Phase 1 was a go/no-go gate: is this common enough to be worth a project?
 
-**643 documents, 6 issuing bodies, random sample, fixed seed.**
+**1,064 documents, 8 issuing bodies, two states, random sample, fixed seed.**
 
 | | n | % |
 |---|---|---|
-| No text layer (scan) | 266 | 41.4% |
-| **Legacy non-Unicode fonts** | **104** | **16.2%** |
-| **Suspect (invalid Devanagari)** | **81** | **12.6%** |
-| Unclassified font | 7 | 1.1% |
-| Clean Unicode | 185 | 28.8% |
+| No text layer (scan) | 416 | 39.1% |
+| **Legacy non-Unicode fonts** | **194** | **18.2%** |
+| **Suspect (invalid Devanagari)** | **139** | **13.1%** |
+| Unclassified font | 20 | 1.9% |
+| Clean Unicode | 295 | 27.7% |
 
-`LEGACY + SUSPECT = 28.8%`, against a threshold of 15% fixed before any data
-was collected. **Only 28.8% of the corpus has a text layer that is both
+`LEGACY + SUSPECT = 31.3%`, against a threshold of 15% fixed before any data
+was collected. **Only 27.7% of the corpus has a text layer that is both
 present and trustworthy.**
 
 Set the scans aside — they're an OCR problem, already well studied, and not
-what this measures. Among the 377 documents that *do* have a text layer,
-**49.1% of it is wrong.** Roughly half the machine-readable Devanagari
-published by these bodies does not say what it appears to say.
+what this measures. Among the documents that *do* have a text layer, roughly
+half of it is wrong. Half the machine-readable Devanagari these bodies publish
+does not say what it appears to say.
 
 ### It isn't one problem, it's two
 
@@ -63,14 +63,22 @@ The second class is 12.8 of those 27.8 points. Every font name looks fine.
 
 ### It isn't uniform either
 
-| Body | n | scan | legacy | suspect | clean |
-|---|---|---|---|---|---|
-| Pimpri-Chinchwad MC | 115 | 14% | 18% | **57%** | 10% |
-| Nashik MC | 115 | 13% | **43%** | 9% | 31% |
-| MHADA | 144 | 65% | 17% | 1% | 17% |
-| Pune Municipal Corp | 49 | 53% | 6% | 4% | 35% |
-| Nagpur MC | 115 | 45% | 3% | 3% | 49% |
-| Pune Metro | 105 | 60% | 1% | 0% | 38% |
+| Body | State | n | scan | legacy | suspect | clean |
+|---|---|---|---|---|---|---|
+| Pimpri-Chinchwad MC | MH | 183 | 12% | 18% | **60%** | 9% |
+| Nashik MC | MH | 190 | 13% | **47%** | 9% | 28% |
+| **Lucknow MC** | **UP** | 54 | 30% | **33%** | 0% | 22% |
+| MHADA | MH | 201 | 63% | 20% | 1% | 15% |
+| Patna MC | BR | 13 | 46% | 8% | 8% | 38% |
+| Pune Municipal Corp | MH | 112 | 50% | 4% | 5% | 37% |
+| Nagpur MC | MH | 183 | 48% | 3% | 2% | 48% |
+| Pune Metro | MH | 128 | 60% | 1% | 0% | 38% |
+
+**The finding generalises beyond Marathi.** Lucknow — Hindi, Uttar Pradesh,
+a different font ecosystem entirely — comes in at 33% legacy, squarely inside
+the Maharashtra range. This is not a Marathi tooling quirk.
+
+Patna is included for completeness but `n = 13` is too small to carry weight.
 
 Marathi-language municipal documents are where the corruption lives. Bodies
 publishing mostly English tender notices have a scan problem instead — real,
@@ -155,9 +163,18 @@ a solved problem for twenty years. That gap is what this project occupies.
 
 Worth stating plainly, because they bound what the 27.8% means.
 
-1. **One state.** Every issuing body is in Maharashtra, so this measures
-   Marathi Devanagari practice, not Indian government PDFs in general.
-   Hindi-belt and southern-language bodies are untested.
+1. **Two states, both Devanagari.** Maharashtra (Marathi) and the Hindi belt
+   (UP, Bihar) are covered. Southern-language bodies — Tamil, Telugu, Kannada,
+   Malayalam — are untested, and their legacy font ecosystems differ again.
+2. **Hindi ASCII remapping is a known blind spot.** Kruti-Dev-style fonts map
+   Devanagari onto *plain ASCII* (`xzke&cjkoudyk¡] rglhy o ftyk&y[kuÅ` =
+   ग्राम...तहसील व जिला-लखनऊ), so the 8-bit signature detector — built against
+   Marathi fonts that map onto Latin-1 supplement — cannot see them. Two
+   discriminators were measured and both overlap legitimate text too much to
+   use alone; details in `font_audit.py`. Affected documents land in
+   `UNCLASSIFIED`, which is why Lucknow's unclassified rate is 15%, the
+   highest of any body. **The true corruption rate is therefore understated**,
+   and by more in Hindi than in Marathi.
 2. **Scans are out of scope.** 40.3% of the corpus has no text layer at all.
    That's an OCR problem, already well studied, and not what this measures.
 3. **`UNCLASSIFIED` has no verified positive control.** It sits at 0.5% and is
