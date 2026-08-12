@@ -28,7 +28,7 @@ seeing a stack trace.
 
 Phase 1 was a go/no-go gate: is this common enough to be worth a project?
 
-**1,064 documents, 8 issuing bodies, two states, random sample, fixed seed.**
+**1,064 documents, 8 issuing bodies, three states, random sample, fixed seed.**
 
 | | n | % |
 |---|---|---|
@@ -43,23 +43,28 @@ was collected. **Only 27.1% of the corpus has a text layer that is both
 present and trustworthy.**
 
 Set the scans aside — they're an OCR problem, already well studied, and not
-what this measures. Among the documents that *do* have a text layer, roughly
-half of it is wrong. Half the machine-readable Devanagari these bodies publish
-does not say what it appears to say.
+what this measures. Among the 648 documents that *do* carry a text layer,
+**53.1% of it is wrong.** More than half the machine-readable Devanagari these
+bodies publish does not say what it appears to say.
 
-### It isn't one problem, it's two
+### It isn't one problem, it's three
 
-The starting hypothesis was legacy fonts. The corpus showed a second mechanism
-that font-name matching cannot detect at all:
+The starting hypothesis named one mechanism. The corpus contains three, and
+font-name matching is blind to two of them:
 
-- **Legacy 8-bit fonts** — glyphs mapped onto ASCII. Text extracts as garbage
-  like `xÉÉÊ¶ÉEò ¨É½þÉxÉMÉ®ú{ÉÉÊ±ÉEòÉ` (= नाशिक महानगरपालिका).
+- **Legacy 8-bit fonts, Marathi style** — glyphs mapped onto the Latin-1
+  supplement. Extracts as `xÉÉÊ¶ÉEò ¨É½þÉxÉMÉ®ú{ÉÉÊ±ÉEòÉ` (= नाशिक महानगरपालिका).
+- **Legacy ASCII remapping, Hindi style** — Kruti Dev and relatives map onto
+  *plain ASCII*, carrying no high bytes at all. Extracts as
+  `i'kq dY;k.k foHkkx` (= पशु कल्याण विभाग). Invisible to a detector built for
+  the Marathi case; three such documents sat in `CLEAN` until it was fixed.
 - **Correct fonts, wrong CMaps** — documents set in genuine Unicode faces
   (Mangal, Aparajita, Adobe Devanagari) whose ToUnicode tables are wrong,
-  usually after a PDF post-processor. Text extracts as Devanagari that is
+  usually after a PDF post-processor. Extracts as Devanagari that is
   *structurally impossible* — vowel signs starting words, two matras adjacent.
 
-The second class is 13.1 of those 32.3 points. Every font name looks fine.
+That last class alone is 13.1 of the 32.3 points, and every font name in those
+files looks perfectly respectable.
 
 ### It isn't uniform either
 
@@ -150,7 +155,7 @@ visible is what surfaced four undocumented legacy families:
 | `DVBW-TTBhima`, `DVBW-TTRadhika` | same |
 | `APS-C-DV-*` (10 variants) | `‚ã. ‰ãŠ. ‡ãŠã¾ããÃÊã¾ããÞãñ` |
 
-**94 distinct legacy variants observed in total**, against a starting list of
+**121 distinct legacy variants observed in total**, against a starting list of
 about 20 patterns. Each new family was confirmed by reading its extracted
 text, never inferred from the name.
 
@@ -182,7 +187,7 @@ a solved problem for twenty years. That gap is what this project occupies.
 
 Worth stating plainly, because they bound what the 32.3% means.
 
-1. **Two states, both Devanagari.** Maharashtra (Marathi) and the Hindi belt
+1. **Three states, all Devanagari.** Maharashtra (Marathi) and the Hindi belt
    (UP, Bihar) are covered. Southern-language bodies — Tamil, Telugu, Kannada,
    Malayalam — are untested, their legacy font ecosystems differ again, and
    neither the Devanagari structural check nor the ASCII-remap detector
