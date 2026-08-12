@@ -157,6 +157,13 @@ class Crawler:
     # --- fetching ----------------------------------------------------------
     def get(self, url, stream=False):
         """GET with rate limiting and exponential backoff."""
+        # Several of these servers accept HTTPS but reset plain HTTP
+        # connections outright, which surfaces as ConnectionResetError rather
+        # than a redirect. Patna lost 28 of its 33 failed downloads this way.
+        # Upgrading costs nothing: any host serving HTTPS accepts it, and a
+        # host that genuinely only speaks HTTP would have failed regardless.
+        if url.startswith("http://"):
+            url = "https://" + url[len("http://"):]
         for attempt in range(config.MAX_RETRIES):
             self._wait(url)
             try:
@@ -182,6 +189,21 @@ DOC_HINTS = [
     "citizen", "department", "annual", "resolution", "gr", "advertisement",
     "recruitment", "quotation", "nit", "eoi", "dpr", "minutes",
 ]
+
+
+# Official government file hosts that serve documents on behalf of many
+# bodies. Every .nic.in district site is built on S3WAAS ("Secure, Scalable &
+# Sugamya Website as a Service"), which keeps the HTML on the body's own
+# domain but serves every PDF from this CDN. Restricting discovery to the
+# body's own domain therefore found forty pages of links and zero documents.
+#
+# Safe for provenance because the CDN path embeds a per-site hash, and we only
+# ever reach these URLs by following a link found on the body's own pages, so
+# a document is still attributed to the site that published it.
+GOV_FILE_HOSTS = {
+    "cdn.s3waas.gov.in",
+    "s3waas.gov.in",
+}
 
 
 def _looks_like_doc_page(href, text):
@@ -234,14 +256,18 @@ def discover_links(crawler, source, max_depth=2, max_pages=40):
             parsed = urlparse(full)
             if parsed.scheme not in ("http", "https"):
                 continue
-            # Same organisation only. Subdomains are allowed because these
-            # sites routinely serve files from a separate file host.
-            if domain not in parsed.netloc:
-                continue
 
-            if ".pdf" in href.lower():
+            is_pdf = ".pdf" in href.lower()
+            same_org = domain in parsed.netloc
+            on_gov_cdn = parsed.netloc in GOV_FILE_HOSTS
+
+            # Documents may live on a shared government CDN while the pages
+            # linking to them live on the body's own domain. Follow HTML only
+            # within the organisation, but accept PDFs from either.
+            if is_pdf and (same_org or on_gov_cdn):
                 found.append((full.split("#")[0], page_url))
-            elif depth < max_depth and _looks_like_doc_page(href, a.get_text()):
+            elif (same_org and depth < max_depth
+                  and _looks_like_doc_page(href, a.get_text())):
                 next_level.append((full.split("#")[0], depth + 1))
 
         frontier.extend(next_level)

@@ -96,6 +96,45 @@ SOURCES = [
         "seeds": ["https://lmc.up.nic.in/"],
         "doc_type": "municipal",
     },
+    # Second wave, expanding the Hindi belt beyond the 67 documents the first
+    # two bodies produced. Kanpur is a municipal corporation; the rest are
+    # district administrations, which publish the same classes of document
+    # (notices, tenders, orders) in Hindi. All NIC-hosted official domains.
+    {
+        "key": "kanpur_mc",
+        "issuing_body": "Kanpur Nagar Nigam",
+        "domain": "kmc.up.nic.in",
+        "seeds": ["https://kmc.up.nic.in/"],
+        "doc_type": "municipal",
+    },
+    {
+        "key": "prayagraj",
+        "issuing_body": "Prayagraj District Administration",
+        "domain": "prayagraj.nic.in",
+        "seeds": ["https://prayagraj.nic.in/"],
+        "doc_type": "district",
+    },
+    {
+        "key": "meerut",
+        "issuing_body": "Meerut District Administration",
+        "domain": "meerut.nic.in",
+        "seeds": ["https://meerut.nic.in/"],
+        "doc_type": "district",
+    },
+    {
+        "key": "indore",
+        "issuing_body": "Indore District Administration",
+        "domain": "indore.nic.in",
+        "seeds": ["https://indore.nic.in/"],
+        "doc_type": "district",
+    },
+    {
+        "key": "bhopal",
+        "issuing_body": "Bhopal District Administration",
+        "domain": "bhopal.nic.in",
+        "seeds": ["https://bhopal.nic.in/"],
+        "doc_type": "district",
+    },
     {
         "key": "pmc",
         "issuing_body": "Pune Municipal Corporation",
