@@ -39,22 +39,40 @@ CREATE TABLE IF NOT EXISTS audit (
     detached_matras     INTEGER,
     producer            TEXT,
     creator             TEXT,
+    legacy_by_output    TEXT,
+    n_legacy_by_output  INTEGER,
     audited_at          TEXT,
     error               TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_audit_verdict ON audit(verdict);
 """
 
+# Columns added after the table already existed in the wild. CREATE TABLE IF
+# NOT EXISTS will not add them to an existing database, so they are applied
+# explicitly. Without this the per-font detector's evidence is lost: the
+# verdict gets stored but not the reason for it, which defeats the point of
+# keeping audit results beside provenance.
+MIGRATIONS = [
+    ("legacy_by_output", "TEXT"),
+    ("n_legacy_by_output", "INTEGER"),
+]
+
 AUDIT_FIELDS = [
     "verdict", "pages", "n_fonts", "fonts_no_unicode", "legacy_fonts",
     "unknown_fonts", "chars", "dev_chars", "invalid_matras",
     "invalid_rate_per_1k", "detached_matras", "producer", "creator",
+    "legacy_by_output", "n_legacy_by_output",
 ]
 
 
 def open_db():
     conn = sqlite3.connect(config.MANIFEST_DB)
     conn.executescript(AUDIT_SCHEMA)
+    have = {r[1] for r in conn.execute("PRAGMA table_info(audit)")}
+    for col, coltype in MIGRATIONS:
+        if col not in have:
+            conn.execute(f"ALTER TABLE audit ADD COLUMN {col} {coltype}")
+    conn.commit()
     return conn
 
 
@@ -164,6 +182,27 @@ def report(conn):
     ls = 100.0 * (counts.get("LEGACY", 0) + counts.get("SUSPECT", 0)) / total
     un = 100.0 * counts.get("UNCLASSIFIED", 0) / total
     print(f"LEGACY+SUSPECT = {ls:.1f}%   UNCLASSIFIED = {un:.1f}%")
+
+    # Pooling every document treats the corpus as one population, which it is
+    # not: repeated collection passes left the bodies very unequally sized, and
+    # the largest happens to be among the worst affected. That lets one portal
+    # steer the headline. The macro average weights each issuing body equally,
+    # answering "how bad is a typical body" rather than "how bad is a typical
+    # document in a sample we did not balance". Report both; if they disagree,
+    # the pooled figure is the one to distrust.
+    per_body = conn.execute("""
+        SELECT d.issuing_body, COUNT(*),
+               SUM(a.verdict IN ('LEGACY','SUSPECT'))
+        FROM documents d JOIN audit a ON a.sha256 = d.sha256
+        GROUP BY d.issuing_body""").fetchall()
+    if len(per_body) > 1:
+        rates = [100.0 * bad / n for _, n, bad in per_body if n]
+        macro = sum(rates) / len(rates)
+        biggest = max(per_body, key=lambda r: r[1])
+        print(f"  pooled (every document equal)     {ls:.1f}%")
+        print(f"  macro  (every body equal, n={len(rates)})   {macro:.1f}%")
+        print(f"  largest body is {100.0*biggest[1]/total:.0f}% of the corpus "
+              f"({biggest[0][:34]}, n={biggest[1]})")
     if ls >= 15 or (ls >= 5 and un >= 15):
         print("DECISION: GO - the corrupted-text-layer problem is real.")
     elif ls + un < 10:

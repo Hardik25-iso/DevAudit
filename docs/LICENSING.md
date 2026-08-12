@@ -69,6 +69,42 @@ Mitigation, in order of preference:
    bodies whose documents matter most to the results — the restriction is on
    redistribution *without* permission, not redistribution as such.
 
+## S3WAAS: a large share of Indian government documents cannot be collected
+
+Attempting to widen the Hindi-belt sample turned up a structural limit worth
+recording, because it bounds what any dataset of this kind can contain.
+
+Every `.nic.in` district site — and there are hundreds — is built on **S3WAAS**
+("Secure, Scalable & Sugamya Website as a Service"), the NIC platform for
+government websites. The HTML lives on the body's own domain; every PDF is
+served from `cdn.s3waas.gov.in`. That CDN's `robots.txt` is:
+
+```
+User-agent: *
+Disallow: /
+```
+
+Unambiguous, and it applies to every document behind it.
+
+Five bodies were added and then removed on this basis: Kanpur Nagar Nigam and
+the Prayagraj, Meerut, Indore and Bhopal district administrations. Discovery
+found **366 documents** across them; all 366 were correctly skipped.
+
+Consequences worth stating plainly:
+
+1. **This is a policy limit, not a technical one.** The documents are public
+   and reachable. We do not collect them because the publisher's own crawl
+   policy says not to.
+2. **It biases what any such corpus can measure.** Bodies that self-host
+   (Lucknow, Patna, the Maharashtra municipal corporations) are collectable;
+   bodies on S3WAAS are not. If those two populations differ in their font
+   practice — and there is no reason to assume they don't — every prevalence
+   figure in this project inherits that selection effect.
+3. **Expanding coverage means finding self-hosting bodies**, not writing a
+   better crawler. A crawler that ignored this would be the whole problem.
+
+This belongs in the write-up's limitations section, not only in the code.
+
 ## Open items
 
 - [ ] Register for a `data.gov.in` API key and record the terms accepted at

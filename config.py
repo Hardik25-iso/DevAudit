@@ -96,45 +96,17 @@ SOURCES = [
         "seeds": ["https://lmc.up.nic.in/"],
         "doc_type": "municipal",
     },
-    # Second wave, expanding the Hindi belt beyond the 67 documents the first
-    # two bodies produced. Kanpur is a municipal corporation; the rest are
-    # district administrations, which publish the same classes of document
-    # (notices, tenders, orders) in Hindi. All NIC-hosted official domains.
-    {
-        "key": "kanpur_mc",
-        "issuing_body": "Kanpur Nagar Nigam",
-        "domain": "kmc.up.nic.in",
-        "seeds": ["https://kmc.up.nic.in/"],
-        "doc_type": "municipal",
-    },
-    {
-        "key": "prayagraj",
-        "issuing_body": "Prayagraj District Administration",
-        "domain": "prayagraj.nic.in",
-        "seeds": ["https://prayagraj.nic.in/"],
-        "doc_type": "district",
-    },
-    {
-        "key": "meerut",
-        "issuing_body": "Meerut District Administration",
-        "domain": "meerut.nic.in",
-        "seeds": ["https://meerut.nic.in/"],
-        "doc_type": "district",
-    },
-    {
-        "key": "indore",
-        "issuing_body": "Indore District Administration",
-        "domain": "indore.nic.in",
-        "seeds": ["https://indore.nic.in/"],
-        "doc_type": "district",
-    },
-    {
-        "key": "bhopal",
-        "issuing_body": "Bhopal District Administration",
-        "domain": "bhopal.nic.in",
-        "seeds": ["https://bhopal.nic.in/"],
-        "doc_type": "district",
-    },
+    # ATTEMPTED AND BLOCKED — kept as a record so they are not retried.
+    #
+    # Kanpur Nagar Nigam (kmc.up.nic.in) and the Prayagraj, Meerut, Indore and
+    # Bhopal district administrations were added to widen the Hindi-belt
+    # sample. All five publish exclusively through S3WAAS, the NIC platform,
+    # whose CDN robots.txt is "User-agent: * / Disallow: /". Discovery found
+    # 366 documents across them and every one was correctly skipped.
+    #
+    # This is a policy limit, not a technical one. Lucknow and Patna are in the
+    # corpus only because they happen to self-host. Any further Hindi-belt
+    # expansion has to find self-hosting bodies; see docs/LICENSING.md.
     {
         "key": "pmc",
         "issuing_body": "Pune Municipal Corporation",

@@ -191,19 +191,22 @@ DOC_HINTS = [
 ]
 
 
-# Official government file hosts that serve documents on behalf of many
-# bodies. Every .nic.in district site is built on S3WAAS ("Secure, Scalable &
-# Sugamya Website as a Service"), which keeps the HTML on the body's own
-# domain but serves every PDF from this CDN. Restricting discovery to the
-# body's own domain therefore found forty pages of links and zero documents.
+# Deliberately empty. See docs/LICENSING.md.
 #
-# Safe for provenance because the CDN path embeds a per-site hash, and we only
-# ever reach these URLs by following a link found on the body's own pages, so
-# a document is still attributed to the site that published it.
-GOV_FILE_HOSTS = {
-    "cdn.s3waas.gov.in",
-    "s3waas.gov.in",
-}
+# Every .nic.in district site is built on S3WAAS, the NIC website platform,
+# which keeps HTML on the body's own domain but serves every PDF from
+# cdn.s3waas.gov.in. Allowing that host made discovery work -- Prayagraj went
+# from 0 to 28 documents -- and then every one of them was correctly skipped,
+# because the CDN's robots.txt is:
+#
+#     User-agent: *
+#     Disallow: /
+#
+# That is unambiguous, so those documents are out of scope. The entry is kept
+# empty rather than deleted so the next person does not rediscover the CDN,
+# "fix" the same bug, and generate a few hundred requests to a server that has
+# already said no.
+GOV_FILE_HOSTS = set()
 
 
 def _looks_like_doc_page(href, text):
