@@ -132,28 +132,38 @@ MOJIBAKE_RANGE = re.compile(r"[¡-ɏ̀-ͯ‘-‰]")
 MOJIBAKE_RATIO = 0.20      # of non-whitespace characters
 MOJIBAKE_MIN_CHARS = 200   # ignore short fragments
 
-# KNOWN GAP -- Hindi-belt ASCII remapping.
+# Hindi-belt ASCII remapping (Kruti Dev and relatives).
 #
 # The signature above catches Marathi legacy fonts, which map onto the Latin-1
-# supplement. Kruti-Dev-style Hindi fonts map onto *plain ASCII* instead, so
-# they slip past it entirely:
+# supplement. Kruti-Dev-style Hindi fonts map onto *plain ASCII*, so they carry
+# no high bytes at all and slip past it:
 #
 #   "xzke&cjkoudyk¡] rglhy o ftyk&y[kuÅ"   = ग्राम...तहसील व जिला-लखनऊ
 #   "ljdkjh xtV] mRrj izns'k"              = सरकारी गजट, उत्तर प्रदेश
+#   "i'kq dY;k.k foHkkx"                   = पशु कल्याण विभाग
 #
-# Two discriminators were measured against the corpus and both were rejected
-# as unsafe on their own:
-#   - vowel ratio: corrupt docs sit at 0.088-0.185, but clean documents reach
-#     down to 0.192, so any workable threshold clips real text
-#   - punctuation inside words ([, ], {, }, = map to Devanagari here): corrupt
-#     docs reach 46/1000 chars, but clean documents with tables and formulas
-#     reach 34, so the distributions overlap
+# The detector exploits the fact that Kruti Dev is a *fixed, known* mapping
+# rather than arbitrary noise. It maps ASCII 'k' onto the Devanagari sign ा
+# (U+093E), which is the single most frequent character in written Hindi. Any
+# text encoded this way therefore inherits ा's frequency onto the letter 'k' —
+# a distribution no English text has, since 'k' is one of English's rarest
+# letters at roughly 0.8%.
 #
-# A conjunction of both, gated on dev_chars == 0 and embedded fonts lacking
-# ToUnicode, looks promising but is not yet validated. Shipping an unvalidated
-# detector would inflate the headline in the flattering direction, which is the
-# specific failure this project exists to avoid. Affected documents currently
-# land in UNCLASSIFIED, which is the correct place for "we cannot tell".
+# Measured across the corpus, restricted to documents with no real Devanagari:
+#
+#   genuine English (tender tables, policy PDFs)   median 0.3%, max 2.5%
+#   Kruti-Dev-encoded Hindi                        10.2% to 21.7%
+#
+# Every one of the 12 documents above 4% was verified by eye as ASCII-remapped
+# Devanagari; none was English. The threshold sits in the middle of a gap with
+# roughly 2x margin on each side, so it is not finely tuned.
+#
+# Two weaker discriminators were measured first and rejected: vowel ratio
+# (corrupt 0.088-0.185 vs clean down to 0.192) and punctuation inside words
+# (corrupt to 46/1000 vs clean to 34/1000). Both overlap legitimate text.
+DEVANAGARI_AA_ASCII = "k"   # Kruti Dev: 'k' -> ा (U+093E)
+ASCII_REMAP_RATIO = 0.05
+ASCII_REMAP_MIN_LETTERS = 300
 
 # The core validity test, and the reason it replaces the old detached-matra
 # regex: a matra is valid ONLY directly after a consonant (optionally nukta-ed).
@@ -343,6 +353,18 @@ def audit(path):
         and row["fonts_no_unicode"] > 0
     )
 
+    # ASCII-remap signature: Kruti-Dev-family Hindi. See the note above the
+    # constants for the measured separation this threshold sits in.
+    letters = [c for c in text if c.isascii() and c.isalpha()]
+    row["ascii_k_ratio"] = (
+        round(letters.count(DEVANAGARI_AA_ASCII) / len(letters), 4)
+        if len(letters) >= ASCII_REMAP_MIN_LETTERS else 0.0)
+    row["ascii_remap_signature"] = int(
+        len(letters) >= ASCII_REMAP_MIN_LETTERS
+        and row["dev_chars"] < MIN_DEV_CHARS
+        and row["ascii_k_ratio"] >= ASCII_REMAP_RATIO
+    )
+
     if row["dev_chars"] >= MIN_DEV_CHARS:
         row["invalid_rate_per_1k"] = round(
             1000.0 * row["invalid_matras"] / row["dev_chars"], 2)
@@ -357,10 +379,11 @@ def audit(path):
         # alone and BEFORE extracting text — so a PDF with fonts but no
         # extractable characters was misfiled as having a text layer.
         verdict = "SCAN"
-    elif legacy or row["mojibake_signature"]:
-        # Either the font is named in the list, or the extracted text carries
-        # the unmistakable 8-bit signature. The second clause is what catches
-        # producers who ship deliberately anonymous subset names.
+    elif legacy or row["mojibake_signature"] or row["ascii_remap_signature"]:
+        # Three routes in: the font is named in the list, the text carries the
+        # 8-bit signature (Marathi), or it carries the ASCII-remap signature
+        # (Hindi). The latter two are what catch producers shipping
+        # deliberately anonymous subset names like TT313t00.
         verdict = "LEGACY"
     elif (row["invalid_rate_per_1k"] >= SUSPECT_RATE_PER_1K
           and row["invalid_matras"] >= SUSPECT_MIN_ABS):

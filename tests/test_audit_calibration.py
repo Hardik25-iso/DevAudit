@@ -151,3 +151,59 @@ def test_devanagari_survives_extraction():
     for name in (PMC_BUDGET, PRESENTATION):
         r = _audit(name)
         assert r["dev_chars"] > 1000, f"{name}: Devanagari lost in extraction"
+
+
+# ---------------------------------------------------------------------------
+# ASCII-remap detector (Kruti Dev family, Hindi belt).
+#
+# These run without fixtures, because the property under test is a frequency
+# threshold rather than anything document-specific. The real separation was
+# measured on the corpus: genuine English tops out at 2.5% 'k', Kruti-Dev-
+# encoded Hindi starts at 10.2%, and the threshold sits between them.
+# ---------------------------------------------------------------------------
+
+# Real extracted text from a Lucknow Municipal Corporation PDF.
+# Reads as "पशु कल्याण विभाग ... नगर निगम लखनऊ" once decoded.
+KRUTI_SAMPLE = (
+    "i'kq dY;k.k foHkkx laf{kIr ifjp; uxj fuxe y[kuÅ ds Ik'kq dY;k.k foHkkx "
+    "}kjk fu;fer :i ls xzke&cjkoudyk¡] rglhy o ftyk&y[kuÅ [kljk la[;k "
+    "{ks=Qy Hkwfe dk izdkj ljdkjh xtV mRrj izns'k ljdkj }kjk izdkf'kr "
+) * 6
+
+ENGLISH_SAMPLE = (
+    "Tender notice for the supply and installation of water treatment "
+    "equipment at the municipal works depot. Bidders must submit sealed "
+    "quotations along with the earnest money deposit before the closing "
+    "date. Technical specifications are attached as Annexure A. "
+) * 6
+
+
+def test_ascii_remap_detector_flags_kruti_dev():
+    assert len(KRUTI_SAMPLE) > 300
+    letters = [c for c in KRUTI_SAMPLE if c.isascii() and c.isalpha()]
+    ratio = letters.count("k") / len(letters)
+    assert ratio >= fa.ASCII_REMAP_RATIO, (
+        f"Kruti-Dev sample scored {ratio:.3f}, below the "
+        f"{fa.ASCII_REMAP_RATIO} threshold")
+
+
+def test_ascii_remap_detector_ignores_english():
+    """
+    Guards the direction that matters. A detector that over-fires would push
+    the headline corruption rate up, which is the flattering direction and
+    therefore the one to be most suspicious of.
+    """
+    letters = [c for c in ENGLISH_SAMPLE if c.isascii() and c.isalpha()]
+    ratio = letters.count("k") / len(letters)
+    assert ratio < fa.ASCII_REMAP_RATIO, (
+        f"ordinary English scored {ratio:.3f}, at or above the "
+        f"{fa.ASCII_REMAP_RATIO} threshold")
+
+
+def test_ascii_remap_threshold_sits_inside_the_measured_gap():
+    """
+    Corpus measurement: English reaches 2.5%, Kruti Dev starts at 10.2%.
+    The threshold must stay strictly inside that gap, with margin, so it is
+    not tuned to a single document.
+    """
+    assert 0.025 < fa.ASCII_REMAP_RATIO < 0.102

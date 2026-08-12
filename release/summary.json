@@ -1,20 +1,20 @@
 {
-  "generated_at": "2026-08-12T03:57:34+00:00",
+  "generated_at": "2026-08-12T04:03:55+00:00",
   "n_documents": 1064,
   "n_issuing_bodies": 8,
   "verdict_counts": {
     "SCAN": 416,
-    "LEGACY": 194,
-    "CLEAN": 296,
-    "UNCLASSIFIED": 19,
+    "LEGACY": 205,
+    "CLEAN": 288,
+    "UNCLASSIFIED": 16,
     "SUSPECT": 139
   },
   "by_issuing_body": {
     "Lucknow Municipal Corporation": {
       "SCAN": 16,
-      "LEGACY": 18,
-      "CLEAN": 13,
-      "UNCLASSIFIED": 7
+      "LEGACY": 27,
+      "CLEAN": 7,
+      "UNCLASSIFIED": 4
     },
     "Maharashtra Housing and Area Development Authority": {
       "CLEAN": 31,
@@ -42,10 +42,10 @@
       "UNCLASSIFIED": 4
     },
     "Patna Municipal Corporation": {
-      "CLEAN": 5,
+      "CLEAN": 3,
       "SCAN": 6,
       "SUSPECT": 1,
-      "LEGACY": 1
+      "LEGACY": 3
     },
     "Pimpri-Chinchwad Municipal Corporation": {
       "CLEAN": 17,
