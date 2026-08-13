@@ -1,9 +1,17 @@
-documents examined: 0
+documents examined: 1602
 
 detector           fires   unique   verdict
-name                   0        0   unused
-doc-mojibake           0        0   unused
-doc-ascii              0        0   unused
-per-font               0        0   unused
+name                 405      154   carries its own weight
+doc-mojibake         203        0   REDUNDANT - delete
+doc-ascii             20        0   REDUNDANT - delete
+per-font             443      144   carries its own weight
 
 co-occurrence (which detectors fire together):
+  doc-mojibake+name+per-font                   166
+  name                                         154
+  per-font                                     144
+  name+per-font                                77
+  doc-mojibake+per-font                        36
+  doc-ascii+per-font                           13
+  doc-ascii+name+per-font                      7
+  doc-mojibake+name                            1

@@ -182,9 +182,9 @@ def test_ascii_remap_detector_flags_kruti_dev():
     assert len(KRUTI_SAMPLE) > 300
     letters = [c for c in KRUTI_SAMPLE if c.isascii() and c.isalpha()]
     ratio = letters.count("k") / len(letters)
-    assert ratio >= fa.ASCII_REMAP_RATIO, (
+    assert ratio >= fa.PERFONT_ASCII_K, (
         f"Kruti-Dev sample scored {ratio:.3f}, below the "
-        f"{fa.ASCII_REMAP_RATIO} threshold")
+        f"{fa.PERFONT_ASCII_K} threshold")
 
 
 def test_ascii_remap_detector_ignores_english():
@@ -195,9 +195,9 @@ def test_ascii_remap_detector_ignores_english():
     """
     letters = [c for c in ENGLISH_SAMPLE if c.isascii() and c.isalpha()]
     ratio = letters.count("k") / len(letters)
-    assert ratio < fa.ASCII_REMAP_RATIO, (
+    assert ratio < fa.PERFONT_ASCII_K, (
         f"ordinary English scored {ratio:.3f}, at or above the "
-        f"{fa.ASCII_REMAP_RATIO} threshold")
+        f"{fa.PERFONT_ASCII_K} threshold")
 
 
 def test_ascii_remap_threshold_sits_inside_the_measured_gap():
@@ -205,8 +205,12 @@ def test_ascii_remap_threshold_sits_inside_the_measured_gap():
     Corpus measurement: English reaches 2.5%, Kruti Dev starts at 10.2%.
     The threshold must stay strictly inside that gap, with margin, so it is
     not tuned to a single document.
+
+    The document-level constant this once guarded was deleted after it was
+    shown never to convict anything alone; the per-font threshold inherited
+    the same measured gap and the same guarantee.
     """
-    assert 0.025 < fa.ASCII_REMAP_RATIO < 0.102
+    assert 0.025 < fa.PERFONT_ASCII_K < 0.102
 
 
 # ---------------------------------------------------------------------------

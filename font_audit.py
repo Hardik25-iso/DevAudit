@@ -134,8 +134,6 @@ DEV_DIGIT_RE = re.compile(r"[०-९]")
 # the output signature catches those, and is the same move as testing
 # Devanagari structure rather than trusting the font list.
 MOJIBAKE_RANGE = re.compile(r"[¡-ɏ̀-ͯ‘-‰]")
-MOJIBAKE_RATIO = 0.20      # of non-whitespace characters
-MOJIBAKE_MIN_CHARS = 200   # ignore short fragments
 
 # Hindi-belt ASCII remapping (Kruti Dev and relatives).
 #
@@ -166,9 +164,11 @@ MOJIBAKE_MIN_CHARS = 200   # ignore short fragments
 # Two weaker discriminators were measured first and rejected: vowel ratio
 # (corrupt 0.088-0.185 vs clean down to 0.192) and punctuation inside words
 # (corrupt to 46/1000 vs clean to 34/1000). Both overlap legitimate text.
+#
+# The thresholds themselves now live with the per-font detector below
+# (PERFONT_MOJIBAKE, PERFONT_ASCII_K). The document-level versions were
+# removed once measurement showed they never convicted anything alone.
 DEVANAGARI_AA_ASCII = "k"   # Kruti Dev: 'k' -> ा (U+093E)
-ASCII_REMAP_RATIO = 0.05
-ASCII_REMAP_MIN_LETTERS = 300
 
 # The core validity test, and the reason it replaces the old detached-matra
 # regex: a matra is valid ONLY directly after a consonant (optionally nukta-ed).
@@ -473,31 +473,18 @@ def audit(path):
     row["virama_then_matra"] = len(VIRAMA_THEN_MATRA.findall(text))
     row["detached_matras"] = len(DETACHED_MATRA.findall(text))
 
-    # Mojibake signature: dense non-ASCII Latin with no Devanagari at all, in
-    # a document whose fonts are embedded without Unicode mappings. Computed
-    # over non-whitespace characters so layout does not dilute it.
+    # Document-wide mojibake and ASCII-remap ratios, kept as reported measures
+    # only. They no longer feed the verdict: measured across all 1,602
+    # documents, the document-level detectors fired 203 and 20 times and were
+    # the sole evidence exactly zero times. The per-font detector subsumes
+    # both, because it runs the same tests on undiluted input.
     body = "".join(text.split())
-    row["mojibake_chars"] = len(MOJIBAKE_RANGE.findall(body))
-    row["mojibake_ratio"] = (round(row["mojibake_chars"] / len(body), 3)
+    row["mojibake_ratio"] = (round(len(MOJIBAKE_RANGE.findall(body)) / len(body), 3)
                              if body else 0.0)
-    row["mojibake_signature"] = int(
-        len(body) >= MOJIBAKE_MIN_CHARS
-        and row["dev_chars"] == 0
-        and row["mojibake_ratio"] >= MOJIBAKE_RATIO
-        and row["fonts_no_unicode"] > 0
-    )
-
-    # ASCII-remap signature: Kruti-Dev-family Hindi. See the note above the
-    # constants for the measured separation this threshold sits in.
     letters = [c for c in text if c.isascii() and c.isalpha()]
     row["ascii_k_ratio"] = (
         round(letters.count(DEVANAGARI_AA_ASCII) / len(letters), 4)
-        if len(letters) >= ASCII_REMAP_MIN_LETTERS else 0.0)
-    row["ascii_remap_signature"] = int(
-        len(letters) >= ASCII_REMAP_MIN_LETTERS
-        and row["dev_chars"] < MIN_DEV_CHARS
-        and row["ascii_k_ratio"] >= ASCII_REMAP_RATIO
-    )
+        if len(letters) >= 300 else 0.0)
 
     if row["dev_chars"] >= MIN_DEV_CHARS:
         row["invalid_rate_per_1k"] = round(
@@ -513,17 +500,15 @@ def audit(path):
         # alone and BEFORE extracting text — so a PDF with fonts but no
         # extractable characters was misfiled as having a text layer.
         verdict = "SCAN"
-    elif (legacy or row["n_legacy_by_output"]
-          or row["mojibake_signature"] or row["ascii_remap_signature"]):
-        # Four routes in, in decreasing order of how much they depend on the
-        # font list being complete:
-        #   - the font is named in LEGACY_PATTERNS
-        #   - a font was convicted by its own rendered output (per-font)
-        #   - the whole document carries the 8-bit signature (Marathi)
-        #   - the whole document carries the ASCII-remap signature (Hindi)
-        # The per-font route is the only one that catches a legacy font used
-        # for a minority of a document's text, since the document-level
-        # signals get diluted below their thresholds in that case.
+    elif legacy or row["n_legacy_by_output"]:
+        # Two routes in: the font is named in LEGACY_PATTERNS, or a font was
+        # convicted by its own rendered output.
+        #
+        # There were four. Two document-level detectors were removed after
+        # check_detector_overlap.py measured them across the whole corpus:
+        # they fired 203 and 20 times and were the sole evidence zero times.
+        # The per-font detector runs the same measurements on undiluted text,
+        # so it catches everything they did and 144 documents they missed.
         verdict = "LEGACY"
     elif (row["invalid_rate_per_1k"] >= SUSPECT_RATE_PER_1K
           and row["invalid_matras"] >= SUSPECT_MIN_ABS):
