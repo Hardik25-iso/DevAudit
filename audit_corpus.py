@@ -12,9 +12,11 @@ Usage:
     python audit_corpus.py                 # audit anything not yet audited
     python audit_corpus.py --reaudit       # re-run over everything
     python audit_corpus.py --report        # print breakdowns, audit nothing
+    python audit_corpus.py --rebucket      # re-apply thresholds, read no PDFs
 """
 
 import argparse
+import collections
 import sqlite3
 import sys
 from pathlib import Path
@@ -41,6 +43,7 @@ CREATE TABLE IF NOT EXISTS audit (
     creator             TEXT,
     legacy_by_output    TEXT,
     n_legacy_by_output  INTEGER,
+    all_fonts           TEXT,
     audited_at          TEXT,
     error               TEXT
 );
@@ -55,13 +58,14 @@ CREATE INDEX IF NOT EXISTS idx_audit_verdict ON audit(verdict);
 MIGRATIONS = [
     ("legacy_by_output", "TEXT"),
     ("n_legacy_by_output", "INTEGER"),
+    ("all_fonts", "TEXT"),
 ]
 
 AUDIT_FIELDS = [
     "verdict", "pages", "n_fonts", "fonts_no_unicode", "legacy_fonts",
     "unknown_fonts", "chars", "dev_chars", "invalid_matras",
     "invalid_rate_per_1k", "detached_matras", "producer", "creator",
-    "legacy_by_output", "n_legacy_by_output",
+    "legacy_by_output", "n_legacy_by_output", "all_fonts",
 ]
 
 
@@ -121,6 +125,55 @@ def run_audit(conn, reaudit=False):
     conn.commit()
     print(f"\naudited {done} documents")
     return done
+
+
+def rebucket(conn):
+    """
+    Recompute verdicts from stored measurements, touching no PDFs.
+
+    Threshold and pattern changes used to require re-opening every file to
+    recompute numbers that had not changed -- slow, and dependent on the
+    external drive being attached. Everything the bucket decision needs is
+    already in the audit table, and `all_fonts` preserves the font names so
+    a new LEGACY_PATTERNS entry can be re-applied too.
+
+    Turns "re-audit 1,602 documents" into a query. Use it after editing a
+    threshold or a font list; use --reaudit only when the *extraction* logic
+    itself changes, since that genuinely needs the files.
+    """
+    cols = ("sha256, verdict, pages, n_fonts, chars, invalid_matras, "
+            "invalid_rate_per_1k, legacy_fonts, unknown_fonts, "
+            "n_legacy_by_output, all_fonts")
+    rows = conn.execute(
+        f"SELECT {cols} FROM audit WHERE verdict != 'ERROR'").fetchall()
+    if not rows:
+        print("nothing to rebucket")
+        return 0
+
+    keys = [c.strip() for c in cols.split(",")]
+    changed = []
+    for values in rows:
+        row = dict(zip(keys, values))
+        # Re-apply the current pattern lists where font names were recorded.
+        # Rows audited before all_fonts existed keep their stored matches.
+        if row.get("all_fonts"):
+            legacy, unknown = font_audit.rematch_fonts(row["all_fonts"])
+            row["legacy_fonts"], row["unknown_fonts"] = legacy, unknown
+        new = font_audit.decide_verdict(row)
+        if new != row["verdict"]:
+            changed.append((row["sha256"], row["verdict"], new))
+        conn.execute(
+            "UPDATE audit SET verdict=?, legacy_fonts=?, unknown_fonts=? "
+            "WHERE sha256=?",
+            (new, row["legacy_fonts"], row["unknown_fonts"], row["sha256"]))
+    conn.commit()
+
+    print(f"rebucketed {len(rows)} documents from stored signals, "
+          f"{len(changed)} verdict change(s)")
+    moves = collections.Counter(f"{o} -> {n}" for _, o, n in changed)
+    for move, c in moves.most_common(10):
+        print(f"    {move:34} {c}")
+    return len(changed)
 
 
 def _pct_table(conn, group_col, label, min_n=1):
@@ -244,10 +297,15 @@ def main():
                     help="re-audit documents already in the audit table")
     ap.add_argument("--report", action="store_true",
                     help="print breakdowns only, audit nothing")
+    ap.add_argument("--rebucket", action="store_true",
+                    help="recompute verdicts from stored signals, no PDFs "
+                         "read; use after a threshold or font-list change")
     args = ap.parse_args()
 
     conn = open_db()
-    if not args.report:
+    if args.rebucket:
+        rebucket(conn)
+    elif not args.report:
         run_audit(conn, reaudit=args.reaudit)
     print()
     report(conn)

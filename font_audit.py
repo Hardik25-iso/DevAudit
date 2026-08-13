@@ -410,6 +410,70 @@ def classify_fonts(fonts):
     return sorted(legacy), sorted(unknown)
 
 
+def decide_verdict(row):
+    """
+    Assign a bucket from stored measurements. First match wins, so the buckets
+    stay disjoint and the percentages sum.
+
+    Deliberately reads nothing but `row`. That is what lets a threshold or
+    pattern change be re-applied to the whole corpus straight from the
+    database, instead of re-opening a thousand PDFs to recompute numbers that
+    have not changed. See `audit_corpus.py --rebucket`.
+    """
+    chars_per_page = row["chars"] / max(row["pages"] or 1, 1)
+
+    if not row["n_fonts"] or chars_per_page < SCAN_CHARS_PER_PAGE:
+        # Decided on extracted text as well as font count: a PDF with fonts
+        # but nothing extractable is a scan too, which the original version
+        # misfiled by deciding before extracting.
+        return "SCAN"
+
+    if row.get("legacy_fonts") or row.get("n_legacy_by_output"):
+        # Two routes in: the font is named in LEGACY_PATTERNS, or a font was
+        # convicted by its own rendered output.
+        #
+        # There were four. Two document-level detectors were removed after
+        # check_detector_overlap.py measured them across the whole corpus:
+        # they fired 203 and 20 times and were the sole evidence zero times.
+        # The per-font detector runs the same measurements on undiluted text,
+        # so it catches everything they did and 144 documents they missed.
+        return "LEGACY"
+
+    if (row["invalid_rate_per_1k"] >= SUSPECT_RATE_PER_1K
+            and row["invalid_matras"] >= SUSPECT_MIN_ABS):
+        # Observed corruption outranks an unidentifiable font: this is
+        # evidence of damage, not merely absence of proof of safety.
+        return "SUSPECT"
+
+    if row.get("unknown_fonts"):
+        return "UNCLASSIFIED"
+    return "CLEAN"
+
+
+def rematch_fonts(all_fonts):
+    """
+    Re-apply the current pattern lists to font names recorded earlier.
+
+    Returns (legacy_fonts, unknown_fonts) exactly as `audit` would, so adding
+    a family to LEGACY_PATTERNS can be re-applied corpus-wide without touching
+    a single PDF. `all_fonts` carries the embedded/no-ToUnicode flag per name,
+    because that conjunction is what makes an unknown name suspicious rather
+    than merely unfamiliar.
+    """
+    legacy, unknown = set(), set()
+    for entry in (all_fonts or "").split(";"):
+        if not entry:
+            continue
+        name, _, flag = entry.rpartition("|")
+        if not name:
+            name, flag = entry, ""
+        if _match_any(name, LEGACY_PATTERNS):
+            legacy.add(name)
+        elif not _match_any(name, KNOWN_GOOD) and flag == "1":
+            unknown.add(name)
+    return ";".join(sorted(legacy)), ";".join(sorted(unknown))
+
+
 def audit(path):
     """Audit one PDF. Returns a flat dict — one row of the report."""
     row = {"file": path.name, "path": str(path),
@@ -438,6 +502,14 @@ def audit(path):
     row["fonts_no_unicode"] = sum(1 for f in fonts if not f["has_tounicode"])
     row["legacy_fonts"] = ";".join(legacy)
     row["unknown_fonts"] = ";".join(unknown)
+    # Every font name seen, with the embedded-and-no-ToUnicode flag that makes
+    # an unfamiliar name suspicious. Recorded so that adding a font family to
+    # the pattern list can be re-applied across the corpus from the database
+    # alone -- without it, only matched and unmatched names survive, and a new
+    # pattern matching a previously known-good font would be missed.
+    row["all_fonts"] = ";".join(sorted(
+        f"{f['name']}|{int(bool(f['embedded']) and not f['has_tounicode'])}"
+        for f in fonts if f["name"]))
 
     # Per-font output analysis, before the document is closed. Catches legacy
     # encodings whose font names are auto-generated subset identifiers, which
@@ -492,35 +564,7 @@ def audit(path):
     else:
         row["invalid_rate_per_1k"] = 0.0
 
-    # --- bucket assignment; first match wins, so buckets stay disjoint ------
-    chars_per_page = row["chars"] / max(row["pages"], 1)
-
-    if row["n_fonts"] == 0 or chars_per_page < SCAN_CHARS_PER_PAGE:
-        # Fixed from the previous version, which decided this on zero-fonts
-        # alone and BEFORE extracting text — so a PDF with fonts but no
-        # extractable characters was misfiled as having a text layer.
-        verdict = "SCAN"
-    elif legacy or row["n_legacy_by_output"]:
-        # Two routes in: the font is named in LEGACY_PATTERNS, or a font was
-        # convicted by its own rendered output.
-        #
-        # There were four. Two document-level detectors were removed after
-        # check_detector_overlap.py measured them across the whole corpus:
-        # they fired 203 and 20 times and were the sole evidence zero times.
-        # The per-font detector runs the same measurements on undiluted text,
-        # so it catches everything they did and 144 documents they missed.
-        verdict = "LEGACY"
-    elif (row["invalid_rate_per_1k"] >= SUSPECT_RATE_PER_1K
-          and row["invalid_matras"] >= SUSPECT_MIN_ABS):
-        # Observed corruption outranks an unidentifiable font: this is
-        # evidence of damage, not merely absence of proof of safety.
-        verdict = "SUSPECT"
-    elif unknown:
-        verdict = "UNCLASSIFIED"
-    else:
-        verdict = "CLEAN"
-
-    row["verdict"] = verdict
+    row["verdict"] = decide_verdict(row)
     return row
 
 
