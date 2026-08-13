@@ -1,0 +1,9 @@
+documents examined: 0
+
+detector           fires   unique   verdict
+name                   0        0   unused
+doc-mojibake           0        0   unused
+doc-ascii              0        0   unused
+per-font               0        0   unused
+
+co-occurrence (which detectors fire together):
