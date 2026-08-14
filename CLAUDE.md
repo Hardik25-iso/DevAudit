@@ -59,7 +59,7 @@ this kind can contain and belongs in the write-up's limitations.
 python collect.py --dry-run           # discover, download nothing
 python collect.py --per-source 60     # random draw, capped per body
 python audit_corpus.py                # audit into manifest, print report
-python -m pytest tests/               # 17 calibration tests
+python -m pytest tests/               # 41 tests (17 Phase 1 calibration)
 ```
 
 Pipe verbose runs to a log and read the tail — full audit output is hundreds of
@@ -80,8 +80,73 @@ python audit_corpus.py > data/audit.log 2>&1 && tail -20 data/audit.log
   not changed. Caching the raw signals would make threshold changes a SQL
   query instead of a thousand-file re-read.
 
+## Where Phase 0 left off
+
+Design is done and written up in `docs/phase0-schema.md`. Read that, not this
+summary, before touching Phase 2.
+
+**The one-line diagnosis.** The instrument measures per font; the database
+stores per document. Everything learned per font is flattened into delimited
+text columns, so only convictions survive — a font that was measured and
+cleared leaves no record. That is why `--rebucket` can re-apply font *names*
+but not per-font *thresholds*, and why the SUSPECT class has no per-font
+evidence at all.
+
+Shipped and tested (**41 tests, was 17 — the original 17 unchanged**):
+
+- `font_audit.measure_font_text()` — measuring split from deciding. Returns
+  every signal unconditionally; `classify_font_output()` sits on top with
+  identical thresholds and byte-identical output. `collect_font_spans()` is now
+  the primitive and records page + offset per span; `collect_font_text()` is a
+  wrapper, so `audit()` is untouched. No Phase 1 number moved.
+- `phase0_schema.py` — `font_observation` (one row per document+font, every
+  signal stored), `excerpt`, `annotation_sample`, `annotation` (append-only),
+  `adjudication`, `doc_annotation`, `ground_truth` view. **Run against the live
+  manifest**; backup at `data/manifest.pre-phase0.sqlite` (gitignored).
+- `extract_observations.py` — the extraction pass. **Not yet run over the
+  corpus; needs the drive.** `--verify` reconciles against `audit` without
+  reading PDFs.
+- `draw_annotation_sample.py` — stratified draw, records selection probability
+  so the labelled proportion can be reweighted to a corpus proportion.
+
+**Corpus state (extraction has been run):** 6,572 font observations across
+1,181 documents; 163 of those documents re-extracted at full-document cap
+(`signals_version` ends `+deep`, so the two populations stay separable).
+Reconciliation against `audit.n_legacy_by_output`: **0 mismatches**. Phase 1
+verdicts and the 36.5%/48.4% figure are untouched — nothing here feeds
+`decide_verdict`.
+
+**A fifth undocumented legacy family: `Akruti`** (§8.3). Not in
+`LEGACY_PATTERNS`. Sits below every threshold — mojibake 0.08 vs 0.15, `k`
+0.03 vs 0.05 — because it falls between the Marathi 8-bit and Kruti Dev
+styles. Confirmed from its stored excerpt (`cne[e De@ke�� 1976` = म्हाडा
+अधिनियम 1976) without opening a PDF. 11 observations in 1 document, already
+`LEGACY` on another font, so the headline does not move. Adding it to
+`LEGACY_PATTERNS` is a `--rebucket`, not a re-audit.
+
+**Cap size cuts both ways (§8.3).** Reading every page fixed one false
+positive (`TimesNewRoman,Bold`, k 0.058→0.019) and created one false negative
+by dilution. A bigger window is not uniformly better; treat `PERFONT_MAX_PAGES`
+as a swept parameter in Phase 2, not a knob to turn now.
+
+**Two findings from testing on the SSD fixtures, both in §8.2:**
+
+1. The 8-page per-font cap starves sparsely-used fonts. `Shree-Dev-0708` is
+   declared on 24 of 43 pages and contributes 24 characters to the sample, so
+   the detector abstains for sampling reasons, not font reasons. Mitigated by
+   storing `n_pages_declared` beside `sampled_chars` so it is queryable.
+2. On that same document the LEGACY verdict rests on a name match against a
+   font that renders almost nothing — the actual corruption is in
+   `ArialUnicodeMS`, a Unicode face with a broken CMap. Right answer, wrong
+   reason. Decide whether to raise `PERFONT_MAX_PAGES` *before* annotating.
+
+Open decisions that must be settled *before* annotating: whether a spurious
+space is `CORRECT` with a note or its own label (§4.4, §9.1), and the
+re-annotation fraction for rare classes (§9.4).
+
 ## Next phase
 
-Phase 0 — extraction schema and annotation guidelines — then Phase 2 ground
-truth. Both are unblocked. Start them in a **fresh session**; this file is the
-handoff.
+Phase 2 ground truth. Next action needs the drive attached:
+`python extract_observations.py --dry-run --limit 5`, then the full pass.
+Steps 4–8 and the reconciliation check are in `docs/phase0-schema.md` §10.
+Start in a **fresh session**.

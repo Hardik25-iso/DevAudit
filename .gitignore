@@ -6,6 +6,7 @@
 data/*.sqlite
 data/*.sqlite-journal
 data/*.csv
+data/*.log
 *.pdf
 
 # Python

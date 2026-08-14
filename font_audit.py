@@ -269,8 +269,16 @@ balance schedule contents table
 """.split())
 
 
-def collect_font_text(doc, max_pages=PERFONT_MAX_PAGES):
-    """Accumulate rendered text per font, capped for speed."""
+def collect_font_spans(doc, max_pages=PERFONT_MAX_PAGES):
+    """
+    Accumulate rendered text per font, capped for speed, keeping track of where
+    each piece came from.
+
+    Returns {name: {"text", "pages", "chunks"}}, where `chunks` records the
+    page and the offset within `text` of every span appended. Annotation needs
+    that: an excerpt without a page number cannot be checked against the
+    rendered document, and adjudication is where page numbers get earned.
+    """
     per = {}
     for pno in range(min(doc.page_count, max_pages)):
         try:
@@ -283,13 +291,99 @@ def collect_font_text(doc, max_pages=PERFONT_MAX_PAGES):
                     name = _base_name(span.get("font") or "")
                     if not name:
                         continue
-                    cur = per.get(name, "")
-                    if len(cur) < PERFONT_CAP_CHARS:
-                        per[name] = cur + (span.get("text") or "") + " "
+                    rec = per.setdefault(
+                        name, {"text": "", "pages": [], "chunks": []})
+                    if pno + 1 not in rec["pages"]:
+                        rec["pages"].append(pno + 1)
+                    if len(rec["text"]) < PERFONT_CAP_CHARS:
+                        piece = (span.get("text") or "") + " "
+                        rec["chunks"].append({"page": pno + 1,
+                                              "char_start": len(rec["text"]),
+                                              "len": len(piece)})
+                        rec["text"] += piece
     return per
 
 
-def classify_font_output(text):
+def collect_font_text(doc, max_pages=PERFONT_MAX_PAGES):
+    """Per-font text only — the shape `audit()` has always used."""
+    return {n: r["text"]
+            for n, r in collect_font_spans(doc, max_pages).items()}
+
+
+def page_of_offset(chunks, offset):
+    """
+    Which page a character offset in a font's accumulated text came from.
+
+    Linear rather than bisected: a capped 2,500-character sample holds a few
+    hundred spans at most, and a loop that is obviously correct beats a
+    bisection that needs a comment explaining its boundary conditions.
+    """
+    page = chunks[0]["page"] if chunks else None
+    for c in chunks:
+        if c["char_start"] > offset:
+            break
+        page = c["page"]
+    return page
+
+
+def measure_font_text(text):
+    """
+    Measure one font's rendered text and return every signal, unconditionally.
+
+    Split out of classify_font_output because a classifier reports only the
+    rule that fired. Phase 2 needs the numbers behind the rules that did not:
+    a threshold cannot be re-tuned against labelled ground truth from the
+    string "8bit(0.76)", and a font that was measured and cleared currently
+    leaves no record at all. Measuring and deciding are separate jobs; this
+    does the measuring and nothing else.
+
+    Gates are reported rather than applied -- `ascii_k_eligible` says whether
+    the sample-size floor was met, so the floor itself stays open to review.
+    Structural counts are taken even when the classifier would defer on them,
+    which is what gives the SUSPECT class per-font evidence it has never had.
+    """
+    body = "".join(text.split())
+    letters = [c for c in text if c.isascii() and c.isalpha()]
+    tokens = re.findall(r"[A-Za-z]{2,}", text.lower())
+    nospace = re.sub(r"\s+", "", text)
+    dev_chars = len(DEV_RANGE.findall(text))
+    invalid = len(INVALID_MATRA.findall(text))
+
+    return {
+        "sampled_chars": len(body),
+        "dev_chars": dev_chars,
+        "latin_letters": len(letters),
+        "n_tokens": len(tokens),
+        # --- shipped signals, in the units the thresholds are stated in -----
+        "mojibake_ratio": (len(MOJIBAKE_RANGE.findall(body)) / len(body)
+                           if body else 0.0),
+        "ascii_k_ratio": (letters.count(DEVANAGARI_AA_ASCII) / len(letters)
+                          if letters else 0.0),
+        "ascii_k_eligible": len(letters) >= PERFONT_ASCII_MIN_LETTERS,
+        "symbol_per_1k": (1000.0 * len(SYMBOL_IN_WORD.findall(text)) / len(body)
+                          if body else 0.0),
+        "english_ratio": (sum(1 for w in tokens if w in COMMON_ENGLISH)
+                          / len(tokens) if len(tokens) >= 20 else 0.0),
+        # --- structural signals, per font rather than per document ---------
+        "invalid_matras": invalid,
+        "invalid_rate_per_1k": (1000.0 * invalid / dev_chars
+                                if dev_chars else 0.0),
+        "word_initial_matras": len(WORD_INITIAL_MATRA.findall(text)),
+        "adjacent_matras": len(ADJACENT_MATRA.findall(text)),
+        "virama_then_matra": len(VIRAMA_THEN_MATRA.findall(text)),
+        "detached_matras": len(DETACHED_MATRA.findall(text)),
+        # Candidate signal, deliberately not wired into any verdict. If the
+        # violation count collapses once whitespace is removed, the damage is
+        # a space the extractor inserted mid-word ("जमा बाज ू"), which is a
+        # different and milder defect than a genuinely reordered glyph stream.
+        # It stays a stored measurement until Phase 2 ground truth says
+        # whether it separates -- three candidate detectors were measured and
+        # rejected, and none of them shipped on plausibility.
+        "invalid_matras_nospace": len(INVALID_MATRA.findall(nospace)),
+    }
+
+
+def classify_font_output(text, m=None):
     """
     Judge one font by its own rendered text.
 
@@ -297,33 +391,30 @@ def classify_font_output(text):
     when the font is fine or there is too little text to tell. Silence means
     "no evidence", never "clean" -- that distinction is what keeps the
     detector from manufacturing corruption it cannot see.
+
+    Pass `m` to reuse measurements already taken; the decision rule and its
+    thresholds are unchanged from Phase 1.
     """
-    body = "".join(text.split())
-    if len(body) < PERFONT_MIN_CHARS:
+    if m is None:
+        m = measure_font_text(text)
+
+    if m["sampled_chars"] < PERFONT_MIN_CHARS:
         return None
 
     # Real Devanagari present means the font maps to Unicode correctly. Whether
     # that Devanagari is *valid* is the structural check's job, not this one.
-    if len(DEV_RANGE.findall(text)) > 20:
+    if m["dev_chars"] > 20:
         return None
 
-    mojibake = len(MOJIBAKE_RANGE.findall(body)) / len(body)
-    if mojibake >= PERFONT_MOJIBAKE:
-        return f"8bit({mojibake:.2f})"
+    if m["mojibake_ratio"] >= PERFONT_MOJIBAKE:
+        return f"8bit({m['mojibake_ratio']:.2f})"
 
-    letters = [c for c in text if c.isascii() and c.isalpha()]
-    if len(letters) >= PERFONT_ASCII_MIN_LETTERS:
-        k = letters.count(DEVANAGARI_AA_ASCII) / len(letters)
-        if k >= PERFONT_ASCII_K:
-            return f"ascii-remap(k={k:.3f})"
+    if m["ascii_k_eligible"] and m["ascii_k_ratio"] >= PERFONT_ASCII_K:
+        return f"ascii-remap(k={m['ascii_k_ratio']:.3f})"
 
-    symbols = 1000.0 * len(SYMBOL_IN_WORD.findall(text)) / len(body)
-    if symbols >= PERFONT_SYMBOL:
-        tokens = re.findall(r"[A-Za-z]{2,}", text.lower())
-        english = (sum(1 for w in tokens if w in COMMON_ENGLISH) / len(tokens)
-                   if len(tokens) >= 20 else 0.0)
-        if english < PERFONT_ENGLISH:
-            return f"symbol-remap({symbols:.0f}/1k)"
+    if (m["symbol_per_1k"] >= PERFONT_SYMBOL
+            and m["english_ratio"] < PERFONT_ENGLISH):
+        return f"symbol-remap({m['symbol_per_1k']:.0f}/1k)"
     return None
 
 
@@ -363,6 +454,11 @@ def collect_fonts(doc):
         for f in page_fonts:
             xref, ext, ftype, basefont, _name, encoding = f[:6]
             if xref in seen:
+                # Keep counting pages after the first sighting. A font declared
+                # on 24 pages that yields 24 characters of sampled text is
+                # under-sampled, and that is only visible if both numbers are
+                # recorded. See `n_pages_declared` in extract_observations.py.
+                seen[xref]["pages"].add(pno + 1)
                 continue
             # ('null','null') when the key is absent, ('xref', 'N 0 R') present.
             try:
@@ -377,6 +473,10 @@ def collect_fonts(doc):
                 "embedded": bool(ext),
                 "type": ftype or "",
                 "has_tounicode": has_tounicode,
+                # Pages are 1-based here because these numbers are read by
+                # humans during annotation, not used as indices.
+                "first_page": pno + 1,
+                "pages": {pno + 1},
             }
     return list(seen.values())
 
