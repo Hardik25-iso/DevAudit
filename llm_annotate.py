@@ -137,7 +137,25 @@ def pending(conn, sample_id):
         (sample_id, ANNOTATOR))]
 
 
+def check_sdk():
+    """
+    Refuse to submit on an SDK too old for structured outputs.
+
+    Without `output_config` the labels come back as free text, which can name a
+    class outside the vocabulary or none at all -- and a batch is paid for
+    whether or not its answers are usable. Checked by capability rather than by
+    version number, so the check stays true as the SDK moves.
+    """
+    if "output_config" not in MessageCreateParamsNonStreaming.__annotations__:
+        sys.exit(
+            f"anthropic {anthropic.__version__} predates structured outputs "
+            f"(`output_config`).\n"
+            f"  pip install --upgrade anthropic\n"
+            f"Submitting anyway would spend the batch on unconstrained labels.")
+
+
 def submit(conn, client, sample_id, limit=None):
+    check_sdk()
     obs_ids = pending(conn, sample_id)[:limit]
     if not obs_ids:
         print(f"nothing pending in '{sample_id}' for {ANNOTATOR}")

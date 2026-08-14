@@ -1,0 +1,27 @@
+# Runtime dependencies. Install with:  pip install -r requirements.txt
+#
+# Lower bounds, not pins: this is a research tool run from a checkout, not a
+# library other code imports, so the risk of a loose floor is a broken run you
+# see immediately rather than a silent incompatibility downstream.
+
+# Collection -- collect.py
+requests>=2.31
+beautifulsoup4>=4.12
+
+# Audit and extraction -- font_audit.py, extract_observations.py
+#
+# Deliberately PyMuPDF and not poppler: the previous version shelled out to
+# pdftotext with subprocess(text=True), which decodes using the locale encoding
+# (cp1252 on Windows). pdftotext emits UTF-8, so Devanagari arrived as mojibake
+# and every corruption counter silently read zero. PyMuPDF returns str.
+pymupdf>=1.24
+
+# Phase 2 LLM annotation pass -- llm_annotate.py
+#
+# Needs a version supporting structured outputs (`output_config`). 0.52 does
+# not; the script preflights for it and refuses to submit rather than sending
+# a request the SDK will not build correctly.
+anthropic>=1.0
+
+# Tests
+pytest>=8.0

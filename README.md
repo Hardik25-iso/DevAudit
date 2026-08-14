@@ -126,8 +126,28 @@ to a checksum and a URL.
 ```bash
 python font_audit.py <folder>        # audit a folder directly
 python export_manifest.py            # build the releasable manifest
-python -m pytest tests/              # calibration tests
+python -m pytest tests/              # 41 tests
 ```
+
+### Ground truth
+
+Phase 1 measures per font but stores per document, so only convictions survive
+— a font that was measured and cleared leaves no record, and no threshold can
+be re-tuned without re-reading every PDF. Phase 0 adds the missing grain: one
+row per (document, font) with every signal stored, plus the extracted text
+itself, so annotation and threshold sweeps both become queries.
+
+```bash
+python phase0_schema.py              # create the tables (once)
+python extract_observations.py       # one pass: 6,572 font observations
+python extract_observations.py --verify   # reconcile against the audit
+python draw_annotation_sample.py     # stratified draw, records selection probability
+python annotate.py --next            # label one observation
+python llm_annotate.py --submit      # second-opinion pass, Batches API
+```
+
+Design, label definitions, and the adjudication protocol are in
+[`docs/phase0-schema.md`](docs/phase0-schema.md).
 
 ## Design decisions worth knowing
 
@@ -278,11 +298,12 @@ Details in [`docs/LICENSING.md`](docs/LICENSING.md).
 
 | | | |
 |---|---|---|
-| 0 | Schema, annotation guidelines | next |
+| 0 | Schema, annotation guidelines | **done** |
 | 1 | Collection + font/encoding audit | **done — GO** |
-| 2 | Ground truth: LLM draft + human verification | after 0 |
+| 2 | Ground truth: LLM draft + human verification | in progress |
 | 3 | Benchmark pdftotext, pdfplumber, Surya, PaddleOCR, a VLM | later |
 | 4 | Legacy-font converter + constraint validation | later |
 | 5 | Write-up and release | later |
 
-Phase 1 answered its question, so Phase 0 is unblocked.
+Phase 2 is underway: 6,572 font observations extracted and reconciled, 434
+drawn for annotation, 0 labelled so far.

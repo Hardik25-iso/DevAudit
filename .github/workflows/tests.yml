@@ -1,0 +1,27 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      # The 17 Phase 1 calibration tests need three real PDFs that are not ours
+      # to redistribute, so they skip here and the pure-logic tests run. CI
+      # therefore proves the code imports and its logic holds; it does not
+      # prove the instrument is still calibrated. Run the full suite locally
+      # with DEVAUDIT_FIXTURES pointed at the fixture folder before trusting a
+      # change to font_audit.py.
+      - run: python -m pytest tests/ -v
