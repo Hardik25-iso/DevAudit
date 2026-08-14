@@ -7,6 +7,7 @@ data/*.sqlite
 data/*.sqlite-journal
 data/*.csv
 data/*.log
+data/llm_batch_id.txt
 *.pdf
 
 # Python
