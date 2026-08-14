@@ -231,6 +231,12 @@ LEFT JOIN annotation_sample s ON s.obs_id = o.obs_id;
 # pattern audit_corpus.py already uses, for the same reason.
 MIGRATIONS = [
     ("font_observation", "n_pages_declared", "INTEGER"),
+    # Whether the annotator was shown the font name. Same reasoning as
+    # saw_detector_output: blindness is a property of the individual
+    # judgement, and a name like DVBW-TTSurekh is as much of a prior as a
+    # verdict is. Rows where this is 1 cannot support any claim about how the
+    # detector performs on fonts whose names say nothing.
+    ("annotation", "saw_font_name", "INTEGER"),
 ]
 
 

@@ -369,10 +369,18 @@ flagged as unresolved in §8, and it is the kind of thing that must be settled
 
 ### 4.5 What an annotator is shown
 
-Font name, the excerpts, sample size, and the rendered page on request.
-**Not** shown: the detector's verdict, the signal values, the Phase 1 bucket,
-or the issuing body. Body is withheld because knowing a document is from Nashik
-— 72% legacy — is a genuine prior that would leak into the labels.
+The excerpts, how much text they were drawn from, and the rendered page on
+request. **Not** shown: the font name, the detector's verdict, the signal
+values, the Phase 1 bucket, or the issuing body.
+
+An earlier draft of this section showed the font name. That was wrong, and
+`annotate.py` hides it. §4.1 tells the annotator never to label from the name;
+displaying it anyway asks them to un-see a strong prior — `DVBW-TTSurekh` is
+as much of a hint as a verdict would be. It also breaks the strata: the whole
+point of the `name_uninformative` cell is to measure the detector where names
+say nothing, which cannot be done if the annotator was reading names.
+`--show-name` exists for adjudication and sets `annotation.saw_font_name`, and
+rows where it is 1 are excluded from any name-blind claim.
 
 ---
 
