@@ -284,7 +284,10 @@ corpus and calling it the same one.
 Only official `.gov.in` and official body domains are collected. No commercial
 tender aggregators, no Scribd.
 
-Details in [`docs/LICENSING.md`](docs/LICENSING.md).
+**The code and the corpus are licensed separately.** The code in this
+repository is MIT ([`LICENSE`](LICENSE)). That says nothing about the
+documents: they are not ours to relicense, and the MIT grant does not extend to
+them. Details in [`docs/LICENSING.md`](docs/LICENSING.md).
 
 ## Documents
 

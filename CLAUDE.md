@@ -56,10 +56,26 @@ this kind can contain and belongs in the write-up's limitations.
 ## Running it
 
 ```bash
+pip install -r requirements.txt       # first time
 python collect.py --dry-run           # discover, download nothing
 python collect.py --per-source 60     # random draw, capped per body
 python audit_corpus.py                # audit into manifest, print report
-python -m pytest tests/               # 41 tests (17 Phase 1 calibration)
+python -m pytest tests/               # 52 tests (17 Phase 1 calibration)
+```
+
+Phase 2, in order. Only `extract_observations.py` needs the external drive:
+
+```bash
+python phase0_schema.py               # create the tables (idempotent)
+python extract_observations.py        # the one drive-attached pass
+python extract_observations.py --deep # re-read documents the page cap starves
+python draw_annotation_sample.py --sample-id gt-v1 --seed 20260814
+python annotate.py --next             # label; --label OBS_ID LABEL to record
+python llm_annotate.py --submit       # second-opinion pass (needs an API key)
+python evaluate.py --agreement        # gates everything below it
+python evaluate.py --detector         # precision and recall against truth
+python evaluate.py --sweep mojibake_ratio
+python evaluate.py --estimate         # corpus rate, reweighted, with an interval
 ```
 
 Pipe verbose runs to a log and read the tail — full audit output is hundreds of
@@ -144,9 +160,36 @@ Open decisions that must be settled *before* annotating: whether a spurious
 space is `CORRECT` with a note or its own label (§4.4, §9.1), and the
 re-annotation fraction for rare classes (§9.4).
 
-## Next phase
+## Where Phase 2 stands
 
-Phase 2 ground truth. Next action needs the drive attached:
-`python extract_observations.py --dry-run --limit 5`, then the full pass.
-Steps 4–8 and the reconciliation check are in `docs/phase0-schema.md` §10.
-Start in a **fresh session**.
+Extraction and every tool are done and tested; **no labels exist yet**. The
+whole remaining phase is annotation and the four reports that read it.
+
+- 6,572 font observations, 1,181 documents, 0 reconciliation mismatches.
+- Sample `gt-v1` drawn: 434 observations, seed 20260814, 6 strata.
+- `annotate.py` (human), `llm_annotate.py` (model, Batches API),
+  `evaluate.py` (agreement, detector, sweep, estimate). All four reports
+  degrade cleanly on empty state, so they can be run at any point.
+
+**Blocked on the author, not on code:**
+
+1. Settle §9.1 — is a spurious space `CORRECT` + `#spurious-space`, or its own
+   label? Every row carries `guideline_version`, so changing this later means
+   re-labelling the affected rows, not starting over.
+2. Label. `python annotate.py --next`.
+3. `pip install --upgrade anthropic` before `llm_annotate.py --submit` — the
+   installed 0.52.0 predates structured outputs, and the script refuses rather
+   than paying for a batch of unconstrained labels.
+
+**Phase 2 ends when** all four hold: 434 observations labelled by both passes;
+disagreements adjudicated into `adjudication`; per-class kappa ≥ 0.7 (the floor
+was fixed in advance — a class below it is blocked from evaluation until the
+guidelines are revised, not waived); and `--detector`, `--sweep`, `--estimate`
+produce the numbers for the write-up. The deliverable is a corpus rate with an
+interval, which is the first version of the headline figure that has error bars
+rather than a caveat paragraph.
+
+Then Phase 3: benchmark extractors against that ground truth.
+
+Still open from Phase 1: `check_detector_overlap.py` has never run. It needs
+the drive and is a separate question — do not fold it into a Phase 2 pass.
