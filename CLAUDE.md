@@ -48,6 +48,12 @@ was under-sampled; per-source caps limit each *run*, not the total, so bodies
 drift out of balance. Report the macro average (each body weighted equally)
 alongside the pooled figure and distrust the pooled one when they disagree.
 
+**`pip` and `python` are different interpreters on this machine.** `pip`
+resolves to the Windows Store Python; `python` resolves to
+`AppData\Local\Programs\Python\Python312`, which is what runs the scripts. A
+plain `pip install X` reports success and installs nothing the scripts can see.
+Always use `python -m pip install X`.
+
 **robots.txt is a hard limit.** `cdn.s3waas.gov.in` serves
 `User-agent: * / Disallow: /`, and every `.nic.in` district site publishes
 through it — hundreds of bodies, uncollectable. This bounds what any corpus of
@@ -56,7 +62,7 @@ this kind can contain and belongs in the write-up's limitations.
 ## Running it
 
 ```bash
-pip install -r requirements.txt       # first time
+python -m pip install -r requirements.txt   # first time; see the pip note above
 python collect.py --dry-run           # discover, download nothing
 python collect.py --per-source 60     # random draw, capped per body
 python audit_corpus.py                # audit into manifest, print report

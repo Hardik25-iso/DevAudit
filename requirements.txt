@@ -20,8 +20,10 @@ pymupdf>=1.24
 #
 # Needs a version supporting structured outputs (`output_config`). 0.52 does
 # not; the script preflights for it and refuses to submit rather than sending
-# a request the SDK will not build correctly.
-anthropic>=1.0
+# a request the SDK will not build correctly. 0.122 is the version that floor
+# was verified against -- note it is below 1.0, so a `>=1.0` floor here would
+# be unsatisfiable rather than merely strict.
+anthropic>=0.122
 
 # Tests
 pytest>=8.0
