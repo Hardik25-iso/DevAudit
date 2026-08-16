@@ -184,15 +184,16 @@ whole remaining phase is annotation and the four reports that read it.
   `ground_truth` → `evaluate.py`. Skipping adjudication leaves every report
   empty however much labelling gets done, because the view joins that table.
 
+**Guidelines are frozen at v0.1** (2026-08-15). §9.1 settled: a spurious space
+is `CORRECT` with a mandatory `#spurious-space` note — the glyph mapping is
+right, so the defect is the extractor's, not the font's, and the font is the
+unit being labelled. Annotation may begin.
+
 **Blocked on the author, not on code:**
 
-1. Settle §9.1 — is a spurious space `CORRECT` + `#spurious-space`, or its own
-   label? Every row carries `guideline_version`, so changing this later means
-   re-labelling the affected rows, not starting over.
-2. Label. `python annotate.py --next`.
-3. `pip install --upgrade anthropic` before `llm_annotate.py --submit` — the
-   installed 0.52.0 predates structured outputs, and the script refuses rather
-   than paying for a batch of unconstrained labels.
+1. Label. `python annotate.py --next`.
+2. Set `ANTHROPIC_API_KEY` before `llm_annotate.py --submit`. The SDK is
+   upgraded (0.122.0) and the preflight passes; only credentials are missing.
 
 **Phase 2 ends when** all four hold: 434 observations labelled by both passes;
 disagreements adjudicated into `adjudication`; per-class kappa ≥ 0.7 (the floor

@@ -363,9 +363,12 @@ right.
 
 It is still a real defect for any downstream consumer, so it is captured as a
 mandatory `#spurious-space` note plus the `invalid_matras_nospace` signal, and
-it is reported separately in the write-up. This is a judgement call, it is
-flagged as unresolved in §8, and it is the kind of thing that must be settled
-*before* annotation starts rather than negotiated per item.
+it is reported separately in the write-up.
+
+**Settled 2026-08-15 by the author: `CORRECT` with the note, as written above.**
+The guidelines are frozen at **v0.1** and annotation may begin. Every
+`annotation` row carries `guideline_version`, so if this is ever revisited the
+cost is re-labelling the rows the change touches, not starting over.
 
 ### 4.5 What an annotator is shown
 
@@ -615,9 +618,12 @@ thresholds rather than being set by hand now.
 
 ## 9. Unresolved questions
 
-1. **Is spurious-space really `CORRECT`?** §4.4 makes the call and explains it.
-   If the project's audience cares about downstream usability more than about
-   font attribution, it should become its own label. Decide before annotating.
+1. ~~**Is spurious-space really `CORRECT`?**~~ **Resolved 2026-08-15:**
+   `CORRECT` with a mandatory `#spurious-space` note, per the reasoning in
+   §4.4 — the glyph mapping is right, so the defect does not belong to the
+   font, which is the unit being labelled. Kept here rather than deleted
+   because a pre-registered protocol should show what was asked and when it
+   was answered, not only the answer. Guidelines frozen at v0.1.
 2. **Should `PARTIAL` exist, or should the unit be finer?** `PARTIAL` is an
    admission that (document, font) is occasionally too coarse. The alternative
    is annotating spans, which multiplies the workload. Keep `PARTIAL`, measure
