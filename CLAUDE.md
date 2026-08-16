@@ -72,6 +72,8 @@ python extract_observations.py --deep # re-read documents the page cap starves
 python draw_annotation_sample.py --sample-id gt-v1 --seed 20260814
 python annotate.py --next             # label; --label OBS_ID LABEL to record
 python llm_annotate.py --submit       # second-opinion pass (needs an API key)
+python adjudicate.py --auto           # agreements settle in bulk
+python adjudicate.py --next           # then one disagreement at a time
 python evaluate.py --agreement        # gates everything below it
 python evaluate.py --detector         # precision and recall against truth
 python evaluate.py --sweep mojibake_ratio
@@ -168,8 +170,12 @@ whole remaining phase is annotation and the four reports that read it.
 - 6,572 font observations, 1,181 documents, 0 reconciliation mismatches.
 - Sample `gt-v1` drawn: 434 observations, seed 20260814, 6 strata.
 - `annotate.py` (human), `llm_annotate.py` (model, Batches API),
-  `evaluate.py` (agreement, detector, sweep, estimate). All four reports
-  degrade cleanly on empty state, so they can be run at any point.
+  `adjudicate.py` (two passes into one final label), `evaluate.py` (agreement,
+  detector, sweep, estimate). Every report degrades cleanly on empty state, so
+  they can be run at any point.
+- The chain is `annotation` → `adjudicate.py` → `adjudication` →
+  `ground_truth` → `evaluate.py`. Skipping adjudication leaves every report
+  empty however much labelling gets done, because the view joins that table.
 
 **Blocked on the author, not on code:**
 

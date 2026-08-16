@@ -97,3 +97,33 @@ def test_smaller_sample_gives_a_wider_interval():
 def test_empty_frame_does_not_divide_by_zero():
     assert ev.stratified_estimate([]) == (0.0, 0.0)
     assert ev.stratified_estimate([(100, 0, 0)]) == (0.0, 0.0)
+
+
+# ---------------------------------------------------------------------------
+# Adjudication — how two passes become one final label
+# ---------------------------------------------------------------------------
+import adjudicate as adj  # noqa: E402
+
+
+def test_agreement_is_unanimous():
+    assert adj.verdict(["CORRECT", "CORRECT"]) == ("unanimous", "CORRECT")
+
+
+def test_disagreement_carries_no_label():
+    """A disagreement must not silently resolve to either opinion — the label
+    is the adjudicator's to supply, with a reason."""
+    assert adj.verdict(["CORRECT", "CMAP_INVALID"]) == ("disagreed", None)
+
+
+def test_one_pass_is_single_not_unanimous():
+    """One opinion is not a reconciliation. §5.3 bars these rows from any
+    agreement calculation, which only works if they are labelled distinctly."""
+    assert adj.verdict(["CORRECT"]) == ("single", "CORRECT")
+
+
+def test_no_opinions():
+    assert adj.verdict([]) == (None, None)
+
+
+def test_three_passes_agreeing_is_still_unanimous():
+    assert adj.verdict(["LEGACY_8BIT"] * 3)[0] == "unanimous"
