@@ -66,7 +66,7 @@ python -m pip install -r requirements.txt   # first time; see the pip note above
 python collect.py --dry-run           # discover, download nothing
 python collect.py --per-source 60     # random draw, capped per body
 python audit_corpus.py                # audit into manifest, print report
-python -m pytest tests/               # 52 tests (17 Phase 1 calibration)
+python -m pytest tests/               # 57 tests (17 Phase 1 calibration)
 ```
 
 Phase 2, in order. Only `extract_observations.py` needs the external drive:
@@ -116,7 +116,8 @@ cleared leaves no record. That is why `--rebucket` can re-apply font *names*
 but not per-font *thresholds*, and why the SUSPECT class has no per-font
 evidence at all.
 
-Shipped and tested (**41 tests, was 17 — the original 17 unchanged**):
+Shipped and tested (the original 17 Phase 1 calibration tests unchanged
+throughout — that is the check that matters):
 
 - `font_audit.measure_font_text()` — measuring split from deciding. Returns
   every signal unconditionally; `classify_font_output()` sits on top with
