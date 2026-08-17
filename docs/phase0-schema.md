@@ -166,8 +166,21 @@ rejected on this project; none should ship on plausibility.
 
 `excerpt(obs_id, page, kind, char_start, text)`, several rows per observation.
 Storing verbatim extracted text is what makes annotation possible with the
-drive detached, and what makes the annotation set redistributable in a way the
-PDFs are not — short quoted fragments for research, not the source documents.
+drive detached.
+
+**It does not make the annotation set redistributable.** An earlier draft of
+this section said it did — "short quoted fragments for research, not the source
+documents" — and that is wrong. The excerpts are drawn from municipal
+documents, and municipal documents contain people: of the 12,004 excerpts
+extracted, 39 carry a date of birth and 60 name a caste category, alongside
+the full names they belong to. Publishing them would republish personal data
+about identifiable private individuals, aggregated and made searchable, which
+is a different act from that data sitting in a PDF on a municipal portal.
+
+`export_manifest.py` reads only `documents` today, so nothing is exposed — the
+risk is that extending the release to cover excerpts looks like an obvious
+convenience. It is not. Anything built on this table has to answer for the
+personal data in it first; see §9.7.
 
 Three `kind` values, and the reason for each:
 
@@ -639,7 +652,18 @@ thresholds rather than being set by hand now.
 6. **External validity is bounded by robots.txt.** Every S3WAAS-published body
    is uncollectable, so ground truth describes self-hosting bodies only. This
    belongs in the write-up's limitations, not in a schema.
-7. **Should `audit` gain the discarded diagnostic columns?** They are computed
+7. **The excerpt table holds personal data, and nothing decides what happens
+   to it.** Names, dates of birth, and caste categories of identifiable private
+   individuals — measured, not feared: 39 excerpts carry a DOB pattern and 60 a
+   caste category, across 11 documents. Three decisions follow, none of them
+   made: whether excerpts may ever be released (§2.2 says no by default);
+   whether to redact before annotation, which risks removing the very defects
+   being labelled; and what the write-up says about handling personal data
+   collected incidentally from public portals. India's DPDP Act 2023 is the
+   relevant regime and it is not obvious that "already public" settles it.
+   Until then, treat `manifest.sqlite` as a file containing personal data:
+   do not publish it, and keep it out of anything shared.
+8. **Should `audit` gain the discarded diagnostic columns?** They are computed
    and thrown away today. Adding them is a one-line change to `AUDIT_FIELDS`
    but requires a re-audit to populate, so it should ride along with the
    extractor pass rather than be a run of its own.
