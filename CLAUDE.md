@@ -187,13 +187,47 @@ whole remaining phase is annotation and the four reports that read it.
 **Guidelines are frozen at v0.1** (2026-08-15). §9.1 settled: a spurious space
 is `CORRECT` with a mandatory `#spurious-space` note — the glyph mapping is
 right, so the defect is the extractor's, not the font's, and the font is the
-unit being labelled. Annotation may begin.
+unit being labelled.
+
+**Label state (2026-08-15).** All 434 observations carry a label from
+`llm:claude-opus-5-interactive` — a model pass done card-by-card in a session,
+*not* the blind batch pass. `hardik` has labelled 4. So `adjudication` holds
+430 rows at `basis='single'` and 3 at `unanimous`.
+
+**The numbers below therefore are not ground truth.** They compare the detector
+to one model's opinion. Treat them as a working proof that the pipeline runs
+end to end, and as a list of places to look — not as a result, and not as
+anything quotable.
+
+| report | value | why it does not count yet |
+|---|---|---|
+| binary precision / recall | 0.975 / 0.830 | against single-pass labels |
+| corpus rate | 58.1% ± 2.6 | same, and font observations not documents |
+| kappa vs `hardik` | 0.600 on n=4 | n=4; two classes below the 0.7 floor |
+
+Per §5.3 the kappa floor **blocks** evaluation, and it is not met. The phase is
+not finished.
+
+**What the run pointed at, worth checking once real labels exist:**
+
+- `LEGACY_ASCII` recall **0.348** — the detector called 12 of 23 Kruti-Dev-family
+  fonts `NO_EVIDENCE`. If that survives real labelling it is the largest known
+  hole in the instrument.
+- `LEGACY_SYMBOL` recall **0.000** on 8 observations, and 3 ASCII-remap fonts
+  were labelled `LEGACY_SYMBOL` by the detector. The symbol rule may be
+  mis-scoped rather than merely insensitive.
+- 40 misses against 5 false positives — the documented fail-toward-silence
+  asymmetry, measured for the first time.
+- 4 false positives, all `CMAP_INVALID` where the text reads correctly.
 
 **Blocked on the author, not on code:**
 
-1. Label. `python annotate.py --next`.
-2. Set `ANTHROPIC_API_KEY` before `llm_annotate.py --submit`. The SDK is
-   upgraded (0.122.0) and the preflight passes; only credentials are missing.
+1. Label independently. `python annotate.py --next` — the model pass must not
+   be treated as the human pass, and until `hardik` has real coverage there is
+   no agreement figure worth reporting.
+2. Set `ANTHROPIC_API_KEY` and run `llm_annotate.py --submit` for the *blind*
+   batch pass. The interactive pass saw strata and detector context; the batch
+   pass does not, and only that one belongs in an agreement calculation.
 
 **Phase 2 ends when** all four hold: 434 observations labelled by both passes;
 disagreements adjudicated into `adjudication`; per-class kappa ≥ 0.7 (the floor
