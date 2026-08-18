@@ -293,6 +293,8 @@ them. Details in [`docs/LICENSING.md`](docs/LICENSING.md).
 
 - [`docs/phase1-results.md`](docs/phase1-results.md) — the full result, with
   breakdowns and caveats
+- [`docs/phase2-results.md`](docs/phase2-results.md) - detector evaluation, the
+  threshold sweeps, and why those figures are leads not validated numbers
 - [`docs/phase1-recon.md`](docs/phase1-recon.md) — what was wrong with the
   original audit tool, and the source survey
 - [`docs/LICENSING.md`](docs/LICENSING.md) — what each source permits
@@ -303,7 +305,7 @@ them. Details in [`docs/LICENSING.md`](docs/LICENSING.md).
 |---|---|---|
 | 0 | Schema, annotation guidelines | **done** |
 | 1 | Collection + font/encoding audit | **done — GO** |
-| 2 | Ground truth: LLM draft + human verification | in progress |
+| 2 | Ground truth: LLM draft + human verification | **done - stated limitation** |
 | 3 | Benchmark pdftotext, pdfplumber, Surya, PaddleOCR, a VLM | later |
 | 4 | Legacy-font converter + constraint validation | later |
 | 5 | Write-up and release | later |
