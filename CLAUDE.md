@@ -97,12 +97,18 @@ python audit_corpus.py > data/audit.log 2>&1 && tail -20 data/audit.log
 
 - Corpus: 1,602 documents, 8 issuing bodies, 3 states.
 - Result: 36.5% macro / 48.4% pooled `LEGACY + SUSPECT`. GO.
-- Open: `check_detector_overlap.py` has never run (needs the drive attached);
-  it answers whether the two document-level detectors still earn their place
-  now that the per-font detector runs the same measurements on better input.
-- Open: audit re-runs re-read every PDF to recompute signals that mostly have
-  not changed. Caching the raw signals would make threshold changes a SQL
-  query instead of a thousand-file re-read.
+- **Both former open items are closed. Do not reopen them** — earlier handoffs
+  carried them forward after they had already been done, which cost one session
+  a near-miss corpus re-read:
+  - `check_detector_overlap.py` **has** run, over all 1,602 documents;
+    `data/overlap.log` holds the output. The two document-level detectors fired
+    203 and 20 times and were the sole evidence **zero** times, so both were
+    deleted from `decide_verdict`. `mojibake_ratio` and `ascii_k_ratio` survive
+    in `audit()` as reported measures only. Re-running it answers a question
+    already answered.
+  - Signal caching shipped as `audit_corpus.py --rebucket` (commit `ca9baa5`),
+    and Phase 0's `font_observation` went further by storing every per-font
+    signal. A threshold or font-list change is a query now, not a re-read.
 
 ## Where Phase 0 left off
 
