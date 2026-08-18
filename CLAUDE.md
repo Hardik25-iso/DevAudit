@@ -66,7 +66,7 @@ python -m pip install -r requirements.txt   # first time; see the pip note above
 python collect.py --dry-run           # discover, download nothing
 python collect.py --per-source 60     # random draw, capped per body
 python audit_corpus.py                # audit into manifest, print report
-python -m pytest tests/               # 57 tests (17 Phase 1 calibration)
+python -m pytest tests/               # 60 tests (17 Phase 1 calibration)
 ```
 
 Phase 2, in order. Only `extract_observations.py` needs the external drive:
@@ -189,36 +189,48 @@ is `CORRECT` with a mandatory `#spurious-space` note — the glyph mapping is
 right, so the defect is the extractor's, not the font's, and the font is the
 unit being labelled.
 
-**Label state (2026-08-15).** All 434 observations carry a label from
-`llm:claude-opus-5-interactive` — a model pass done card-by-card in a session,
-*not* the blind batch pass. `hardik` has labelled 4. So `adjudication` holds
-430 rows at `basis='single'` and 3 at `unanimous`.
+**Label state, and the decision that governs it (2026-08-15).** All 434
+observations carry a label from `llm:claude-opus-5-interactive`; `hardik` has
+13, of which 12 agreed. `adjudication` holds 421 `single`, 12 `unanimous`, 1
+`adjudicated`.
 
-**The numbers below therefore are not ground truth.** They compare the detector
-to one model's opinion. Treat them as a working proof that the pipeline runs
-end to end, and as a list of places to look — not as a result, and not as
-anything quotable.
+**The two-pass protocol was abandoned by decision, not by oversight.** The
+author chose to accept the model pass as the working ground truth and ship
+Phase 2 without a human-validated κ. `docs/phase0-schema.md` §5.5 is the
+record; read it before quoting any number, because it fixes what the numbers
+may be called. Three consequences carry forward:
 
-| report | value | why it does not count yet |
+- There is no inter-annotator reliability figure. κ over 13 items is a
+  diagnostic, not an estimate.
+- The labels are one automated reading. Detector and labeller use different
+  mechanisms so the comparison is not circular, but an error they share is
+  invisible — `LEGACY_SYMBOL` at 0.000 recall is the live case.
+- The pass was **not** blind to stored signals: the interface showed
+  `sampled_chars` and `dev_chars`, and the stratum name on the first few items.
+  `saw_detector_output=0` on those rows is to that extent wrong.
+
+The figures may be described as *the detector's agreement with a single
+model-assisted labelling pass over a stratified sample* — not ground truth, not
+validated precision and recall.
+
+| report | value | status |
 |---|---|---|
-| binary precision / recall | 0.975 / 0.830 | against single-pass labels |
-| corpus rate | 58.1% ± 2.6 | same, and font observations not documents |
-| kappa vs `hardik` | 0.600 on n=4 | n=4; two classes below the 0.7 floor |
+| binary precision / recall | 0.975 / 0.826 | against single-pass labels |
+| corpus rate | 58.1% ± 2.6 | interval is sampling variance only, no label error |
+| kappa vs `hardik` | 0.810 on n=8 at last check | n too small to mean anything |
 
-Per §5.3 the kappa floor **blocks** evaluation, and it is not met. The phase is
-not finished.
+**What the run pointed at, still worth checking:**
 
-**What the run pointed at, worth checking once real labels exist:**
+- `LEGACY_ASCII` recall **0.348** — 12 of 23 Kruti-Dev-family fonts called
+  `NO_EVIDENCE`. The largest known hole in the instrument.
+- `LEGACY_SYMBOL` recall **0.000** on 8, with 3 ASCII-remap fonts labelled
+  `LEGACY_SYMBOL` by the detector — reads as mis-scoped, not insensitive.
+- 41 misses against 5 false positives: the fail-toward-silence asymmetry,
+  measured for the first time.
 
-- `LEGACY_ASCII` recall **0.348** — the detector called 12 of 23 Kruti-Dev-family
-  fonts `NO_EVIDENCE`. If that survives real labelling it is the largest known
-  hole in the instrument.
-- `LEGACY_SYMBOL` recall **0.000** on 8 observations, and 3 ASCII-remap fonts
-  were labelled `LEGACY_SYMBOL` by the detector. The symbol rule may be
-  mis-scoped rather than merely insensitive.
-- 40 misses against 5 false positives — the documented fail-toward-silence
-  asymmetry, measured for the first time.
-- 4 false positives, all `CMAP_INVALID` where the text reads correctly.
+**To lift the limitation later** (§5.5, increasing cost): run
+`llm_annotate.py --submit` for a blind second pass; complete a human pass; or
+draw a fresh smaller sample and label it twice properly.
 
 **Blocked on the author, not on code:**
 

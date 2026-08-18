@@ -126,7 +126,7 @@ to a checksum and a URL.
 ```bash
 python font_audit.py <folder>        # audit a folder directly
 python export_manifest.py            # build the releasable manifest
-python -m pytest tests/              # 41 tests
+python -m pytest tests/              # 60 tests
 ```
 
 ### Ground truth
@@ -309,4 +309,11 @@ them. Details in [`docs/LICENSING.md`](docs/LICENSING.md).
 | 5 | Write-up and release | later |
 
 Phase 2 is underway: 6,572 font observations extracted and reconciled, 434
-drawn for annotation, 0 labelled so far.
+drawn for annotation and labelled.
+
+**The Phase 2 labels are a single model-assisted pass, not two-pass ground
+truth.** The protocol called for an independent second pass gated on Cohen's
+κ ≥ 0.7; that gate was pre-registered and has not been met. Any detector
+precision, recall, or corpus rate from this phase should be read as *agreement
+with one labelling pass*, and the deviation is documented in
+[`docs/phase0-schema.md`](docs/phase0-schema.md) §5.5.

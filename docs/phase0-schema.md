@@ -1,13 +1,16 @@
 # Phase 0 — Extraction Schema and Annotation Guidelines
 
-Status: implemented; one interim run recorded in §11. Guideline version **0.1**.
+Status: implemented and run once. **The two-pass protocol in §5 was not
+carried out — see §5.5 for the deviation and what it costs.** Guideline
+version **0.1**.
 Written 2026-08-14, after Phase 1 answered GO.
 
 Phase 1 asked *is this problem real*. Phase 2 asks *is the instrument right*.
 That second question needs something Phase 1 never produced: labelled data at
 the grain the instrument actually works at. This document defines that grain,
 the fields stored at it, the labels a human applies to it, and how two passes
-over the same item get reconciled into one defensible answer.
+over the same item get reconciled into one defensible answer. That last part
+is the design; §5.5 records that it was not followed.
 
 ---
 
@@ -448,6 +451,52 @@ fixed **before** the first label is written, in the same spirit as the 15%
 go/no-go threshold that was fixed before any data existed. Changing any of them
 afterwards means bumping `GUIDELINE_VERSION` and saying so in the write-up.
 
+### 5.5 Deviation from this protocol, decided 2026-08-15
+
+**The two-pass design in §5.2 was not carried out, and the κ floor in §5.3 was
+not met. The author has decided to proceed anyway.** This section records that
+as a deviation rather than absorbing it into the design, because §5.4
+pre-registered the floor precisely so it could not be relaxed once the data
+existed. Relaxing it is exactly what has happened, and a reader is entitled to
+know that rather than to infer it.
+
+**What exists.** One model pass (`llm:claude-opus-5-interactive`) covering all
+434 observations, and 13 human labels, 12 of which agreed. `adjudication`
+therefore holds 421 rows at `basis='single'`, 12 `unanimous`, 1 `adjudicated`.
+
+**What this costs, stated plainly:**
+
+1. **There is no inter-annotator reliability figure.** κ over 13 overlapping
+   items is not an estimate of anything. Any per-class κ the tool prints should
+   be read as a diagnostic, never as a reliability claim.
+2. **The labels are one automated reading of the excerpts.** The detector and
+   the labeller work by different mechanisms — byte-level heuristics against
+   the raw text versus a language model reading it — so the comparison is not
+   circular. But an error both share is invisible to it. The `LEGACY_SYMBOL`
+   result is the live example: the detector scores 0.000 recall against labels
+   that a single labeller assigned, and nothing here can distinguish "the
+   detector misses this class" from "both parties scope this class the same
+   wrong way".
+3. **The pass was not blind to the stored signals.** Contrary to §4.5, the
+   labelling interface used for the bulk of the pass displayed `sampled_chars`
+   and `dev_chars` alongside the excerpts, and for the first handful of items
+   the stratum name — which encodes the detector's verdict. `saw_detector_output`
+   is recorded as 0 on those rows and is, to that extent, wrong. The blind batch
+   pass in `llm_annotate.py` does not have this defect; it remains unrun.
+
+**What the figures may therefore be called.** "The detector's agreement with a
+single model-assisted labelling pass over a stratified sample." Not ground
+truth, not validated precision and recall, and not a corpus rate with error
+bars in the sense §6 promised — the interval reflects sampling variance only,
+and says nothing about label error.
+
+**What would lift the limitation**, in increasing order of cost: run
+`llm_annotate.py --submit` for a genuinely blind second pass; complete a human
+pass over the 434; or draw a fresh smaller sample and label it twice properly.
+Any of the three restores a real κ and returns §5.3's gate to force.
+
+---
+
 ---
 
 ## 6. How this supports detector evaluation
@@ -739,9 +788,11 @@ All 434 sampled observations were labelled by `llm:claude-opus-5-interactive`
 open, and wrote the remaining 430 at `basis='single'`.
 
 **A single-pass label is one opinion, not ground truth.** Per §5.3 those rows
-are barred from agreement calculations, and the κ that does exist — 0.600 on
-n=4, with two classes under the 0.7 floor — *blocks* evaluation rather than
-merely qualifying it. Nothing in §11.3 is quotable.
+are barred from agreement calculations, and the κ over the handful of
+overlapping items estimates nothing. The author has since decided to proceed on
+this basis regardless; **§5.5 records that decision, and it governs how every
+figure below may be described.** Nothing in §11.3 is quotable as validated
+precision, recall, or a corpus rate.
 
 The interactive pass is also **not** the blind second opinion the protocol
 calls for: it saw stratum labels and had session context the batch pass does
