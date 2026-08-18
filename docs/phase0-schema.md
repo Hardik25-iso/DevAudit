@@ -864,3 +864,61 @@ reports). This is a stratified draw, so it says nothing directly about corpus
 proportions — but it is a reminder that the bodies publishing least in Indic
 scripts contribute a large share of *fonts*, and per-font rates will read
 differently from per-document ones.
+
+### 11.6 The sweep, and what it says about each signal
+
+The threshold sweep is the report §6 promised and the reason the schema stores
+every signal for every font. Running it turned up a flaw in the tool first:
+`--sweep` scored each signal against *all* corrupt labels, which caps a
+signal's recall at its target class's share of them. `mojibake_ratio` cannot
+detect a Kruti Dev font at any threshold, so scored that way a well-tuned
+threshold looked broken. It now scores against the class each signal targets
+(`SIGNAL_TARGET` in `evaluate.py`).
+
+Scored correctly, at the shipped thresholds:
+
+| signal | target | shipped | precision | recall |
+|---|---|---|---|---|
+| `mojibake_ratio` | `LEGACY_8BIT` | 0.15 | 0.974 | 0.949 |
+| `invalid_rate_per_1k` | `CMAP_INVALID` | 2.0 | 0.943 | 0.953 |
+| `ascii_k_ratio` | `LEGACY_ASCII` | 0.05 | 0.900 | 0.391 |
+| `symbol_per_1k` | `LEGACY_SYMBOL` | 10.0 | 0.000 | 0.000 |
+
+The first two are well placed. `invalid_rate_per_1k` is flat from 0.5 to 2.0
+and decays slowly above it, so 2.0 sits comfortably inside a plateau rather
+than on an edge — which is what a pre-registered threshold should look like
+when it turns out to be right.
+
+**`LEGACY_ASCII` is a coverage problem, not a tuning problem.** This is the
+correction to §11.3, which read the 0.348 recall as the instrument's largest
+hole and implied a threshold fix. Of the 15 missed observations:
+
+- **12 have `ascii_k_ratio` at or near 0.000** with 800–1,500 ASCII letters
+  sampled. They are not Kruti Dev. They are ISM (`qnnar-qMMdS> _hmZJanm{bH$m`),
+  transliteration-style (`kaoToSana naaoiTsa mahanagarpailaka`), and a third
+  family (`qrqTI, Trrq{`), whose mappings send nothing in particular to `k`.
+  The `k` signal works because Kruti Dev maps `k` onto ा, the commonest
+  character in written Hindi — a property of *one* encoding. **No threshold on
+  this signal can ever catch the others.** Lowering it trades precision away
+  for no recall: the sweep is flat at ~0.39–0.48 recall from 0.0125 upward.
+- **1 is a near-miss on the sample-size gate.** obs 1974 has `ascii_k` 0.184,
+  far above the threshold, and 196 ASCII letters against the 200-letter floor.
+  It was missed by four letters. The floor was added to kill a Myriad Pro
+  signature-block false positive and it still earns its place, but it has now
+  cost one true detection, which is worth knowing when it is next revisited.
+- **4 were caught as `LEGACY_SYMBOL` instead.** They are not silent failures —
+  the binary "is this wrong" call was right and only the mechanism was wrong.
+
+So the honest statement is: the ASCII-remap detector covers one family well
+and three families not at all. Fixing it means a new signal per family, or a
+family-agnostic one, not a knob.
+
+**`symbol_per_1k` does not work at any threshold.** Against the 9 observations
+labelled `LEGACY_SYMBOL` it peaks at F1 0.125 around 2.5–4.9 and is 0.000 at
+the shipped 10.0. Phase 1 validated this rule at precision 1.000 against fonts
+identifiable *by name*; against labels it does not survive. Two readings fit —
+the rule is mis-scoped, or `LEGACY_SYMBOL` as defined in §3.1 does not carve
+the corpus at a joint — and 9 observations cannot separate them. It should be
+the first thing a real labelling pass re-examines.
+
+All of the above rests on single-pass labels (§5.5) and is a lead, not a result.

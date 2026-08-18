@@ -221,10 +221,20 @@ validated precision and recall.
 
 **What the run pointed at, still worth checking:**
 
-- `LEGACY_ASCII` recall **0.348** — 12 of 23 Kruti-Dev-family fonts called
-  `NO_EVIDENCE`. The largest known hole in the instrument.
-- `LEGACY_SYMBOL` recall **0.000** on 8, with 3 ASCII-remap fonts labelled
-  `LEGACY_SYMBOL` by the detector — reads as mis-scoped, not insensitive.
+- `LEGACY_ASCII` recall **0.348** is a **coverage** gap, not a threshold one
+  (§11.6). 12 of the 15 misses have `ascii_k_ratio` ≈ 0.000 over 800–1,500
+  sampled letters: they are ISM, transliteration-style and a third family, none
+  of which map anything onto `k`. That signal works because Kruti Dev sends `k`
+  to ा — a property of one encoding. No threshold catches the rest; it needs a
+  new signal per family. One further miss, obs 1974, had `ascii_k` 0.184 and
+  196 ASCII letters against the 200-letter floor — missed by four letters.
+- `symbol_per_1k` **does not work at any threshold** against `LEGACY_SYMBOL`:
+  peak F1 0.125 near 2.5–4.9, 0.000 at the shipped 10.0. Phase 1 validated it
+  at precision 1.000 against fonts identified *by name*; against labels it does
+  not survive. Either the rule is mis-scoped or the class does not carve at a
+  joint, and 9 observations cannot tell you which.
+- `mojibake_ratio` (0.974/0.949) and `invalid_rate_per_1k` (0.943/0.953) are
+  both well placed, the latter sitting inside a plateau rather than on an edge.
 - 41 misses against 5 false positives: the fail-toward-silence asymmetry,
   measured for the first time.
 

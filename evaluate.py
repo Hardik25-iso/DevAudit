@@ -30,6 +30,19 @@ import font_audit as fa
 POSITIVE = ("LEGACY_8BIT", "LEGACY_ASCII", "LEGACY_SYMBOL", "CMAP_INVALID")
 KAPPA_FLOOR = 0.7
 
+# Which class each signal is actually trying to catch. A signal must be scored
+# against its own target, not against every corrupt label: mojibake_ratio
+# cannot detect a Kruti Dev font at any threshold, so scoring it against all
+# positives caps its recall at LEGACY_8BIT's share of them and makes a
+# correctly-tuned threshold look broken.
+SIGNAL_TARGET = {
+    "mojibake_ratio": "LEGACY_8BIT",
+    "ascii_k_ratio": "LEGACY_ASCII",
+    "symbol_per_1k": "LEGACY_SYMBOL",
+    "invalid_rate_per_1k": "CMAP_INVALID",
+    "invalid_matras_nospace": "CMAP_INVALID",
+}
+
 
 def cohen_kappa(pairs):
     """
@@ -220,14 +233,23 @@ def sweep(conn, signal, steps=20):
                "symbol_per_1k": fa.PERFONT_SYMBOL,
                "invalid_rate_per_1k": fa.SUSPECT_RATE_PER_1K}.get(signal)
 
+    target = SIGNAL_TARGET.get(signal)
+    hits = (lambda lab: lab == target) if target else (lambda lab: lab in POSITIVE)
+    n_target = sum(1 for _, lab in rows if hits(lab))
+
     print(f"sweeping {signal} over {len(rows)} labelled observations "
           f"[{lo:.4g}, {hi:.4g}]")
+    if target:
+        print(f"  scored against {target} ({n_target} observations) -- the class "
+              f"this signal targets, not every corrupt label")
+    else:
+        print(f"  no target class recorded; scored against all corrupt labels")
     print(f"  {'threshold':>10} {'prec':>6} {'rec':>6} {'F1':>6}")
     for i in range(steps + 1):
         t = lo + (hi - lo) * i / steps
-        tp = sum(1 for v, lab in rows if v >= t and lab in POSITIVE)
-        fp = sum(1 for v, lab in rows if v >= t and lab not in POSITIVE)
-        fn = sum(1 for v, lab in rows if v < t and lab in POSITIVE)
+        tp = sum(1 for v, lab in rows if v >= t and hits(lab))
+        fp = sum(1 for v, lab in rows if v >= t and not hits(lab))
+        fn = sum(1 for v, lab in rows if v < t and hits(lab))
         p, r, f1 = prf(tp, fp, fn)
         mark = ""
         if shipped is not None and i and abs(t - shipped) <= (hi - lo) / steps / 2:
