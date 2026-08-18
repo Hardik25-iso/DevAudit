@@ -1,6 +1,6 @@
 # Phase 0 — Extraction Schema and Annotation Guidelines
 
-Status: proposed, partially implemented. Guideline version **0.1**.
+Status: implemented; one interim run recorded in §11. Guideline version **0.1**.
 Written 2026-08-14, after Phase 1 answered GO.
 
 Phase 1 asked *is this problem real*. Phase 2 asks *is the instrument right*.
@@ -722,3 +722,94 @@ needs the external drive.
 Unrelated and still open from Phase 1: `check_detector_overlap.py` has never
 run. It also needs the drive, and it is a separate question that should not be
 folded into the same pass.
+
+---
+
+## 11. Interim run, 2026-08-15 — the pipeline works, the numbers do not count
+
+Every step from §10 has now been executed once, end to end. This section
+records what that established and what it did not, because the figures it
+produced are easy to mistake for results.
+
+### 11.1 What was actually run
+
+All 434 sampled observations were labelled by `llm:claude-opus-5-interactive`
+— a model pass performed card by card in a working session. `hardik` labelled
+4. `adjudicate.py` therefore settled 3 as `unanimous`, left 1 disagreement
+open, and wrote the remaining 430 at `basis='single'`.
+
+**A single-pass label is one opinion, not ground truth.** Per §5.3 those rows
+are barred from agreement calculations, and the κ that does exist — 0.600 on
+n=4, with two classes under the 0.7 floor — *blocks* evaluation rather than
+merely qualifying it. Nothing in §11.3 is quotable.
+
+The interactive pass is also **not** the blind second opinion the protocol
+calls for: it saw stratum labels and had session context the batch pass does
+not. `llm_annotate.py --submit` remains unrun, and only its output belongs in
+an agreement figure.
+
+### 11.2 What the run did establish
+
+- **The chain holds.** `annotation` → `adjudication` → `ground_truth` →
+  `evaluate.py` produced all four reports without manual repair.
+- **§2.2's premise is validated.** All 434 were labelled from stored excerpts
+  with the external drive detached and no PDF opened. Annotation is genuinely
+  portable, which was the point of storing text.
+- **The strata contain what they were drawn to contain.** The
+  `no_evidence/*` cells produced real positives — the detector's silences are
+  visible, which is the only way recall can be measured at all.
+
+### 11.3 Numbers, for orientation only
+
+| | |
+|---|---|
+| binary precision / recall | 0.975 / 0.830 |
+| false negatives vs false positives | 40 vs 5 |
+| corpus rate, reweighted | 58.1% ± 2.6 |
+
+The 40:5 asymmetry is the documented fail-toward-silence behaviour, measured
+for the first time rather than asserted. The corpus rate is over **font
+observations, not documents**, and is not comparable to Phase 1's 36.5%/48.4%.
+
+Three places to look once real labels exist:
+
+1. **`LEGACY_ASCII` recall 0.348** — 12 of 23 Kruti-Dev-family fonts were
+   called `NO_EVIDENCE`. If this survives, it is the largest known hole in the
+   instrument, and it sits precisely on the family the README calls out as
+   invisible to a detector built for the Marathi case.
+2. **`LEGACY_SYMBOL` recall 0.000** on 8 observations, while 3 ASCII-remap
+   fonts *were* labelled `LEGACY_SYMBOL` by the detector. That pattern reads
+   as a mis-scoped rule rather than an insensitive one.
+3. **4 false positives, all `CMAP_INVALID` on text that reads correctly.**
+   Small, but the only place the instrument over-fires.
+
+### 11.4 The label classes are coarser than the mechanisms
+
+Reading 434 excerpts made one thing plain that the schema does not capture:
+three of the labels each cover several distinct mechanisms.
+
+- **`CMAP_INVALID`** spans at least four: i-matra stored in visual order
+  (`नािशक` for `नाशिक`); systematic consonant substitution (`वलबाग` for
+  `विभाग`, `आयोग्म` for `आरोग्य`); Latin or IPA-extension characters standing
+  in for conjuncts (`नाTशक`, `ना ͧ शक`); and Devanagari-Extended codepoints
+  doing the same (`ᳲ पपरी`).
+- **`LEGACY_8BIT`** spans at least five byte mappings — the Nashik
+  `xÉÉÊ¶ÉEò` family, APS `‚ã. ‰ãŠ.`, `­ÖÖ×¿Ö eú`, the `=`-separated
+  `îLXâX=`, and the Akruti hybrid `cne[e De@keÌì` of §8.3.
+- **`LEGACY_ASCII`** spans Kruti Dev (`Jh HkSjo`), transliteration-style
+  (`kaoToSana naaoiTsa`), and ISM (`qnnar-qMMdS>`).
+
+Evaluation will report each as one class and will therefore average over
+mechanisms that may behave very differently. Whether to split them is a
+decision for after real labelling — splitting now would fragment classes that
+are already thin — but the write-up should not describe any of the three as a
+single phenomenon.
+
+### 11.5 The corpus is more English than the Phase 1 framing suggests
+
+`CORRECT` was the largest label at 142 of 434, most of it English tender and
+consultancy documents (Pune Metro, the Lucknow sanitation plan, Patna audit
+reports). This is a stratified draw, so it says nothing directly about corpus
+proportions — but it is a reminder that the bodies publishing least in Indic
+scripts contribute a large share of *fonts*, and per-font rates will read
+differently from per-document ones.
