@@ -70,7 +70,13 @@ def _write(conn, obs_id, label, basis, adjudicator, note):
 
 def auto(conn, sample_id, include_single=False):
     """Write the uncontested cases; leave every disagreement for a human."""
-    done = {r[0] for r in conn.execute("SELECT obs_id FROM adjudication")}
+    # Settled means reconciled. A basis='single' row is provisional -- one
+    # opinion recorded because no second one existed yet -- so it must be
+    # revisited when a second pass arrives. Treating it as done would let a
+    # premature --single freeze the table and silently discard every label the
+    # second annotator goes on to write.
+    done = {r[0] for r in conn.execute(
+        "SELECT obs_id FROM adjudication WHERE basis != 'single'")}
     counts = {"unanimous": 0, "single": 0, "disagreed": 0, "skipped": 0}
     for obs_id, opinions in _by_observation(conn, sample_id).items():
         if obs_id in done:
@@ -79,6 +85,11 @@ def auto(conn, sample_id, include_single=False):
         basis, label = verdict([lab for _, lab, _, _ in opinions])
         if basis == "unanimous" or (basis == "single" and include_single):
             _write(conn, obs_id, label, basis, "auto", None)
+        elif basis == "disagreed":
+            # A provisional row must not outlive the agreement it assumed.
+            conn.execute(
+                "DELETE FROM adjudication WHERE obs_id=? AND basis='single'",
+                (obs_id,))
         counts[basis] = counts.get(basis, 0) + 1
     conn.commit()
 

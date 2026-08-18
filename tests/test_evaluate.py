@@ -127,3 +127,71 @@ def test_no_opinions():
 
 def test_three_passes_agreeing_is_still_unanimous():
     assert adj.verdict(["LEGACY_8BIT"] * 3)[0] == "unanimous"
+
+
+# ---------------------------------------------------------------------------
+# A provisional label must never outlive the absence it assumed
+# ---------------------------------------------------------------------------
+import sqlite3  # noqa: E402
+
+import phase0_schema  # noqa: E402
+
+
+def _one_observation_db():
+    conn = sqlite3.connect(":memory:")
+    conn.executescript(phase0_schema.SCHEMA)
+    conn.execute("INSERT INTO font_observation (obs_id, sha256, font_name)"
+                 " VALUES (1,'sha','SomeFont')")
+    conn.execute("INSERT INTO annotation_sample (sample_id, obs_id, stratum,"
+                 " stratum_size, drawn, selection_prob, seed)"
+                 " VALUES ('s',1,'stratum',10,1,0.1,7)")
+    return conn
+
+
+def _label(conn, annotator, label):
+    conn.execute("INSERT INTO annotation (obs_id, annotator, round, label,"
+                 " guideline_version) VALUES (1,?,1,?,'0.1')",
+                 (annotator, label))
+
+
+def _basis(conn):
+    row = conn.execute("SELECT basis FROM adjudication WHERE obs_id=1").fetchone()
+    return row[0] if row else None
+
+
+def test_single_row_is_upgraded_when_a_second_opinion_arrives(capsys):
+    """The bug this pins: --auto --single froze 430 rows, and because they
+    looked settled, every later label from the second annotator was silently
+    discarded. A single-pass row is provisional, not done."""
+    conn = _one_observation_db()
+    _label(conn, "first", "CORRECT")
+    adj.auto(conn, "s", include_single=True)
+    assert _basis(conn) == "single"
+
+    _label(conn, "second", "CORRECT")
+    adj.auto(conn, "s")
+    assert _basis(conn) == "unanimous"
+
+
+def test_single_row_is_withdrawn_when_the_second_opinion_disagrees(capsys):
+    """It must not silently keep the first annotator's label as if reconciled —
+    the row has to disappear so --next surfaces the disagreement."""
+    conn = _one_observation_db()
+    _label(conn, "first", "CORRECT")
+    adj.auto(conn, "s", include_single=True)
+
+    _label(conn, "second", "CMAP_INVALID")
+    adj.auto(conn, "s")
+    assert _basis(conn) is None
+
+
+def test_a_reconciled_row_is_never_reopened(capsys):
+    """Unanimous and adjudicated rows are settled; --auto must leave them."""
+    conn = _one_observation_db()
+    _label(conn, "first", "CORRECT")
+    _label(conn, "second", "CORRECT")
+    adj.auto(conn, "s")
+    conn.execute("UPDATE adjudication SET basis='adjudicated',"
+                 " final_label='PARTIAL' WHERE obs_id=1")
+    adj.auto(conn, "s")
+    assert _basis(conn) == "adjudicated"
