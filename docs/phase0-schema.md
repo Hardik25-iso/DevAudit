@@ -922,3 +922,30 @@ the corpus at a joint — and 9 observations cannot separate them. It should be
 the first thing a real labelling pass re-examines.
 
 All of the above rests on single-pass labels (§5.5) and is a lead, not a result.
+
+### 11.7 A κ of 1.000 that means almost nothing
+
+Pass C (§5.2) was run against the model pass: a 15% subsample (65 observations,
+seed 20260815) re-labelled as round 2, in a different order. The result is
+**κ = 1.000, 100% agreement, on every class present**.
+
+**This is not a reliability figure and must not be reported as one.** §5.2
+specifies a gap of at least seven days between rounds, and the gap is the
+entire mechanism — it exists so the second pass is a fresh judgement rather
+than recall of the first. Here there was no gap at all, and the same model
+re-labelled the same excerpts with its earlier reasoning still in context. A κ
+of 1.000 under those conditions is what memory looks like, not what agreement
+looks like.
+
+What it does weakly support: the labelling is *deterministic*. Applying the
+guidelines twice to the same text did not produce coin-flips between adjacent
+classes, so the §3.1 vocabulary is at least self-consistent under repetition.
+That is worth knowing and is a much smaller claim than the number suggests.
+
+`evaluate.py` now prints a different caveat for an `llm:` annotator than for a
+human one, so the figure cannot be quoted out of its conditions. The honest
+version of this statistic still requires a person, two sittings, and a week
+between them.
+
+For the record, the human-vs-model comparison stands at **κ = 0.882 on n=13**
+— also too small to carry weight, but at least measuring two different readers.

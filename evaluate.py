@@ -144,10 +144,20 @@ def _kappa_table(title, pairs, caveat=None):
 def agreement(conn, annotator):
     """Intra-annotator (round 1 vs 2) and human-vs-model reliability."""
     r1, r2 = _labels_by(conn, annotator, 1), _labels_by(conn, annotator, 2)
+    # The caveat depends on who the annotator is. §5.2 calls round 1 vs round 2
+    # the honest reliability figure *for a person*, and it only means that when
+    # the two rounds are genuinely separated -- the seven-day gap exists to stop
+    # the second pass being recall of the first. A model re-labelling inside one
+    # session has no such separation, so a high kappa there measures memory, not
+    # reliability, and must not be presented as the same statistic.
+    caveat = ("this is the honest reliability figure for a one-person project"
+              if not annotator.startswith("llm:") else
+              "same model, no separation between rounds: this measures whether "
+              "the labelling is deterministic, NOT reliability -- a high value "
+              "here is expected and means little")
     _kappa_table(
         f"intra-annotator: {annotator} round 1 vs round 2",
-        [(r1[o], r2[o]) for o in r1.keys() & r2.keys()],
-        "this is the honest reliability figure for a one-person project")
+        [(r1[o], r2[o]) for o in r1.keys() & r2.keys()], caveat)
 
     for (other,) in conn.execute(
             "SELECT DISTINCT annotator FROM annotation WHERE annotator != ?",
