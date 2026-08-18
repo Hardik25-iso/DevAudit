@@ -40,18 +40,42 @@ LABELS = [
 SCRIPTS = ["deva", "latin", "mixed", "other", "none"]
 
 
-def next_card(conn, sample_id, annotator):
-    row = conn.execute("""
+def next_card(conn, sample_id, annotator, round_=1):
+    """
+    The next card to label.
+
+    Round 1 draws from what this annotator has not seen. Round 2 draws only
+    from what they *have* already labelled -- that is the point of pass C in
+    docs/phase0-schema.md §5.2: the same items judged twice, blind, at least a
+    week apart, giving the intra-annotator kappa that is the honest reliability
+    figure for a one-person project.
+
+    Round 2 is ordered by a hash of the observation id rather than by obs_id,
+    so the sequence differs from round 1. Working through the same items in the
+    same order invites recall of the previous decision instead of a fresh one.
+    """
+    if round_ == 1:
+        where = ("o.obs_id NOT IN (SELECT obs_id FROM annotation"
+                 "                 WHERE annotator = ? AND round = 1)")
+        order = "o.obs_id"
+    else:
+        where = ("o.obs_id IN (SELECT obs_id FROM annotation"
+                 "             WHERE annotator = ? AND round = 1)"
+                 " AND o.obs_id NOT IN (SELECT obs_id FROM annotation"
+                 f"                     WHERE annotator = ? AND round = {int(round_)})")
+        order = "substr(o.obs_id * 2654435761, -4)"
+    params = ((sample_id, annotator) if round_ == 1
+              else (sample_id, annotator, annotator))
+    row = conn.execute(f"""
         SELECT o.obs_id, s.stratum, o.sampled_chars, o.n_pages_seen,
                o.n_pages_declared, o.signals_version
         FROM annotation_sample s
         JOIN font_observation o ON o.obs_id = s.obs_id
-        WHERE s.sample_id = ?
-          AND o.obs_id NOT IN (SELECT obs_id FROM annotation
-                               WHERE annotator = ? AND round = 1)
-        ORDER BY o.obs_id LIMIT 1""", (sample_id, annotator)).fetchone()
+        WHERE s.sample_id = ? AND {where}
+        ORDER BY {order} LIMIT 1""", params).fetchone()
     if not row:
-        print(f"nothing left unlabelled in '{sample_id}' for {annotator}")
+        print(f"nothing left for {annotator} in '{sample_id}' at round {round_}"
+              + ("" if round_ == 1 else " -- label more in round 1 first"))
         return None
 
     obs_id, stratum, chars, seen, declared, version = row
@@ -160,7 +184,7 @@ def main():
     elif args.progress:
         progress(conn, args.sample_id, args.annotator)
     else:
-        obs = next_card(conn, args.sample_id, args.annotator)
+        obs = next_card(conn, args.sample_id, args.annotator, args.round)
         if obs and args.show_name:
             name = conn.execute("SELECT font_name FROM font_observation "
                                 "WHERE obs_id=?", (obs,)).fetchone()[0]
