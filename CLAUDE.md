@@ -146,8 +146,9 @@ verdicts and the 36.5%/48.4% figure are untouched — nothing here feeds
 0.03 vs 0.05 — because it falls between the Marathi 8-bit and Kruti Dev
 styles. Confirmed from its stored excerpt (`cne[e De@ke�� 1976` = म्हाडा
 अधिनियम 1976) without opening a PDF. 11 observations in 1 document, already
-`LEGACY` on another font, so the headline does not move. Adding it to
-`LEGACY_PATTERNS` is a `--rebucket`, not a re-audit.
+`LEGACY` on another font, so the headline does not move. **Added to `LEGACY_PATTERNS` on 2026-08-15** — `--rebucket` reported 0 verdict
+changes, so the headline is unmoved (§11.8). Backup at
+`data/manifest.pre-akruti.sqlite`.
 
 **Cap size cuts both ways (§8.3).** Reading every page fixed one false
 positive (`TimesNewRoman,Bold`, k 0.058→0.019) and created one false negative

@@ -69,6 +69,17 @@ LEGACY_PATTERNS = [
     # APS-C-DV-* : ten variants across MHADA, all emitting 8-bit garbage
     # ("‚ã. ‰ãŠ. ‡ãŠã¾ããÃÊã¾ããÞãñ") with zero Devanagari characters.
     "aps-c-dv", "aps-dv", "apsdv",
+    # --- Phase 2 annotation (2026-08-15) -------------------------------------
+    # Akruti, a fifth family, found by reading a stored excerpt rather than by
+    # any signal firing: "cne[e De@keìì 1976" = म्हाडा अधिनियम 1976. It sits below every
+    # per-font threshold -- mojibake 0.08 against 0.15, ASCII k 0.03 against
+    # 0.05 -- because its output falls between the Marathi 8-bit and Kruti Dev
+    # styles, carrying sparse high bytes over mostly-ASCII text. Nine faces
+    # observed (Bharati, Bhaskar, Chanakya07, Yogini, NewPriyaExpand), all in
+    # one document, which was already LEGACY on another font. Adding the name
+    # changes no verdict today; it is here so the next corpus does not have to
+    # rediscover it. See docs/phase0-schema.md 8.3.
+    "akruti",
 ]
 
 # Fonts we can positively vouch for. A font NOT on this list is not assumed

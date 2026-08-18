@@ -949,3 +949,21 @@ between them.
 
 For the record, the human-vs-model comparison stands at **κ = 0.882 on n=13**
 — also too small to carry weight, but at least measuring two different readers.
+
+### 11.8 Akruti added to `LEGACY_PATTERNS`
+
+Done 2026-08-15, with the impact measured first rather than after. Nine faces
+across the corpus — Bharati, Bhaskar, Chanakya07, Yogini, NewPriyaExpand — all
+inside a single document, which was already `LEGACY` on `DVBW-TTYogesh`.
+`--rebucket` reports **0 verdict changes**, so the 36.5% macro / 48.4% pooled
+figure is unmoved and remains comparable to every earlier statement of it.
+
+It is worth adding anyway. The family was found by *reading a stored excerpt*
+(`cne[e De@ke·· 1976` = म्हाडा अधिनियम 1976), which is how the previous four
+undocumented families were found too, and it is the only one of the five that
+no per-font signal fires on — mojibake 0.08 against a 0.15 threshold, ASCII `k`
+0.03 against 0.05, because its output falls between the Marathi 8-bit and Kruti
+Dev styles. In this corpus that costs nothing; in a corpus where an Akruti
+document has no second corrupt font, it would be a silent miss.
+
+Backup taken at `data/manifest.pre-akruti.sqlite` before rebucketing.
