@@ -78,7 +78,12 @@ def select_documents(conn, tier, per_body, seed):
     rows = [tuple(r) for r in conn.execute(sql)]
 
     if tier == "all":
-        return rows      # census, not a sample; no draw to record
+        # A census needs no draw — but it still needs shuffling, because an
+        # interrupted census is a sample whether or not it was meant to be one.
+        # Left in SQL order this returned 100% of six bodies, 58% of Nashik and
+        # nothing at all from Pune MC when the drive dropped at 838 of 1,097.
+        random.Random(seed).shuffle(rows)
+        return rows
 
     # Cap per body so one prolific corporation cannot dominate, and so the
     # macro average by body stays computable.
