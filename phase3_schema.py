@@ -130,6 +130,12 @@ CREATE TABLE IF NOT EXISTS extraction (
     -- "did these arms produce identical output?" a GROUP BY rather than a
     -- pairwise string comparison over 15,000 rows.
     text_hash       TEXT,
+    -- Hash of the *sorted* characters. The pair separates the two questions
+    -- §3.4 needs kept apart: equal bag_hash with differing text_hash means the
+    -- arms produced the same characters in a different order -- a reading-order
+    -- defect -- while a differing bag_hash means they disagree on content and
+    -- the order question does not arise.
+    bag_hash        TEXT,
     text_sample     TEXT,       -- first ~600 chars, so §3.4 and eyeballing
                                 -- work with the external drive detached
 

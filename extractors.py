@@ -191,6 +191,11 @@ def measure(text):
         # keeps the encoding question separate from the spacing question --
         # the same trick invalid_matras_nospace uses.
         "text_hash": hashlib.sha256(body.encode("utf-8", "replace")).hexdigest()[:16],
+        # Sorted characters: equal bag with unequal text means same characters,
+        # different order -- which is a reading-order defect and belongs to the
+        # extractor, not the font (phase0-schema.md §4.3).
+        "bag_hash": hashlib.sha256(
+            "".join(sorted(body)).encode("utf-8", "replace")).hexdigest()[:16],
         "text_sample": text[:600],
     }
     for k in ("dev_chars", "latin_letters", "n_tokens", "mojibake_ratio",
