@@ -91,6 +91,14 @@ def select_documents(conn, tier, per_body, seed):
         pool = sorted(by_body[body])
         rng.shuffle(pool)
         out.extend(pool[:per_body] if per_body else pool)
+
+    # Shuffle across bodies too, so an interrupted run degrades to a random
+    # subset rather than to "the first bodies alphabetically". The external
+    # drive has now dropped three times mid-pass; the first time it did so
+    # here it left a partial run containing every Nagpur document and no Patna,
+    # PCMC or Pune MC document at all -- which is precisely the sampling
+    # failure that has already produced three wrong answers in this project.
+    rng.shuffle(out)
     return out
 
 
