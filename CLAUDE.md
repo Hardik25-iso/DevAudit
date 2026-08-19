@@ -86,6 +86,22 @@ python evaluate.py --sweep mojibake_ratio
 python evaluate.py --estimate         # corpus rate, reweighted, with an interval
 ```
 
+Phase 3. Only `benchmark_extract.py` needs the external drive; every report
+reads the manifest:
+
+```bash
+python phase3_schema.py                   # create the tables (idempotent)
+python benchmark_extract.py --tier labelled --arms text --max-pages 5
+python benchmark_extract.py --tier all --arms all --max-pages 1   # + OCR
+python evaluate_extractors.py --run labelled-20260819 --all
+python evaluate_extractors.py --run all-20260819 --concordance
+python evaluate_extractors.py --run all-20260819 --sweep replacement
+```
+
+OCR needs Tesseract at `config.TESSERACT_EXE` and language data in
+`data/tessdata/` (gitignored, ~7MB, `tessdata_fast` `hin`+`mar`). Without it
+the concordance report degrades cleanly and says so; every other report works.
+
 Pipe verbose runs to a log and read the tail — full audit output is hundreds of
 lines and every one of them stays in the session context afterwards:
 
@@ -264,17 +280,58 @@ in its first section. Do not reopen it to chase the kappa gate unless the
 author asks; the labelling was optional upside and its absence is documented,
 not hidden.
 
+## Where Phase 3 stands
+
+**Design settled 2026-08-19 and written up in `docs/phase3-design.md`. Read
+that, not this summary.** Both opening questions are answered: five arms
+(`pdftotext`, PyMuPDF, `pdfplumber`, `pypdf`, Tesseract OCR), and "recovered
+correctly" is four reference-free measurements rather than one, with **loss
+gating the other three**.
+
+Shipped and tested (90 tests, the 17 Phase 1 calibration tests unchanged):
+`phase3_schema.py`, `extractors.py`, `benchmark_extract.py`,
+`evaluate_extractors.py`.
+
+**Three things the pilot established that are expensive to rediscover:**
+
+**Extractors do not fail identically on legacy fonts.** The expected result was
+that they would — same bytes, same missing `ToUnicode` — which would have made
+the phase pointless. False. Each descends its own fallback ladder and produces
+*different* garbage. This is also why per-font grain cannot be carried forward:
+the divergence destroys any alignment key between arms.
+
+**The Phase 1/2 signal battery would rank the worst extractor best.** On corrupt
+documents `pdftotext` scores `mojibake_ratio` 0.001 — cleaner than the clean
+control — while emitting **43.7% U+FFFD**. `MOJIBAKE_RANGE` does not cover
+U+FFFD, so every corruption signal this project owns is blind to it. Silence
+scoring as success, one more time. That is why loss is measured first and gates
+everything downstream.
+
+**The grain drops from font to page, and there is no way around it.** Three
+mitigations were measured and all three failed: document-level font dominance
+(70 of 434 observations qualify), page-level dominance (~30%), and span probing
+(defeated by the divergence above). Dilution hits every arm equally, so
+rankings survive; absolute rates do not, and must be quoted with that attached.
+
+**The finding that outgrew the phase.** Script concordance — comparing OCR of
+the rendered page against the text layer — turned out to be a *detector*, and
+it fires on documents Phase 1 called `CLEAN`: 15 of 32 scorable pages in a
+45-document draw. They are legacy remaps embedded under `Helvetica` and
+`Times-Roman`, plain ASCII, no Latin-1 supplement, no Kruti Dev `k` — invisible
+to every shipped signal, and exactly the coverage gap §11.6 said would need "a
+new signal per family". Concordance is family-agnostic, so it is that signal.
+
+Pune Metro scores 0/10, which is the negative control working. **This is the
+first defect in the project's history that pushes the estimate UP**, which
+`CLAUDE.md`'s own rule says is the direction to distrust — hence the corpus-wide
+run rather than a claim from n=32.
+
+Decided with the author 2026-08-19: `docs/phase1-results.md` is **not** revised.
+It stays traceable to the rows that produced it, and Phase 3 reports the
+correction as its own finding, additively, the way Phase 0 did.
+
 ## Next phase
 
-**Phase 3 — benchmark extractors against the corpus.** Fresh question, does not
-depend on more labelling to begin. Run the same documents through `pdftotext`,
-`pdfplumber`, PyMuPDF, and an OCR path, and measure which recovers correct text
-from documents the detector flags. The 434 labelled observations give a scored
-subset; the wider corpus gives coverage.
-
-Two things to settle first, with the author: which extractors are in scope, and
-what "recovered correctly" means as a metric — string match against a reference
-is not available, so it will likely be the same structural and encoding checks
-applied to each extractor's output.
-
-Start it in a **fresh session**; this file is the handoff.
+**Phase 4 — legacy-font converter and constraint validation.** Phase 3
+establishes what no extractor recovers; building the reverse mapping table that
+would recover it is Phase 4. Start it in a **fresh session**.
