@@ -171,6 +171,17 @@ CREATE TABLE IF NOT EXISTS page_pair (
 """
 
 
+# Columns added after the table has been created somewhere. CREATE TABLE IF
+# NOT EXISTS will not add them, so they are applied explicitly — the same
+# pattern phase0_schema.py and audit_corpus.py already use, for the same
+# reason. Adding a column to SCHEMA alone silently does nothing on a database
+# that already has the table, and the failure surfaces much later as an
+# INSERT error.
+MIGRATIONS = [
+    ("extraction", "bag_hash", "TEXT"),
+]
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[1])
     ap.add_argument("--db", default=str(config.MANIFEST_DB))
@@ -180,6 +191,11 @@ def main():
     before = {r[0] for r in conn.execute(
         "SELECT name FROM sqlite_master WHERE type IN ('table','view')")}
     conn.executescript(SCHEMA)
+    for table, col, coltype in MIGRATIONS:
+        have = {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}
+        if col not in have:
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {coltype}")
+            print(f"  migrated: {table}.{col}")
     conn.commit()
     after = {r[0] for r in conn.execute(
         "SELECT name FROM sqlite_master WHERE type IN ('table','view')")}
