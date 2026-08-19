@@ -20,3 +20,6 @@ venv/
 # OS
 Thumbs.db
 desktop.ini
+
+# Tesseract language data — fetched by hand, see docs/phase3-design.md §4
+data/tessdata/
