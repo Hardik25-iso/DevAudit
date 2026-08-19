@@ -20,6 +20,23 @@ CACHE_DIR = DATA_ROOT / "cache"      # HF_HOME / TORCH_HOME, from Phase 3
 REPO_ROOT = Path(__file__).resolve().parent
 MANIFEST_DB = REPO_ROOT / "data" / "manifest.sqlite"
 
+# --- Phase 3: OCR ----------------------------------------------------------
+# Tesseract is not on PATH in this environment (the winget install puts it in
+# Program Files and does not add it), so the path is explicit rather than
+# resolved -- a silent fallback to "tesseract not found" would look exactly
+# like "no Devanagari on this page", which is the answer the check is trying
+# to establish.
+TESSERACT_EXE = Path(r"C:\Program Files\Tesseract-OCR\tesseract.exe")
+
+# Language data lives in the repo, gitignored, rather than in Program Files:
+# no admin needed to add a language, and the models stay pinned to this
+# project. tessdata_fast, not _best -- design §3.2 needs the script right, not
+# the characters.
+TESSDATA_DIR = REPO_ROOT / "data" / "tessdata"
+OCR_LANGS = "mar+hin+eng"
+OCR_DPI = 150          # enough for script identification; 200 was 2x slower
+                       # for no change in the Devanagari share on a 12-page probe
+
 # --- crawl policy ----------------------------------------------------------
 USER_AGENT = (
     "DevAudit-research/0.1 (academic research on PDF text-layer quality; "
