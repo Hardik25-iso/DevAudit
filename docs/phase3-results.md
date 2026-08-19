@@ -147,6 +147,41 @@ whitespace is removed. The extractor inserted a space mid-word. This is the
 defect `phase0-schema.md` §4.4 explicitly deferred to Phase 3, measured for the
 first time — and it is attributable to the extractor, not the font.
 
+### 2.4 Per font — where the divergence actually lives
+
+The secondary comparison (`compare_fonts.py`), over the two arms that can
+attribute text to a font, joined onto the 434 labels. 2,024 font observations
+across the same 317 documents.
+
+```
+label                 fonts  identical  same chars  differ  only 1 arm
+CORRECT                 108      0.667       0.000   0.315       0.019
+LEGACY_8BIT             114      0.719       0.000   0.281       0.000
+LEGACY_ASCII             18      0.667       0.000   0.333       0.000
+LEGACY_SYMBOL             9      0.667       0.000   0.333       0.000
+CMAP_INVALID             77      0.091       0.000   0.896       0.013
+UNDECIDABLE              27      0.444       0.000   0.556       0.000
+(unlabelled)           1758      0.712       0.000   0.168       0.120
+```
+
+**Two findings the page-level reports could not produce.**
+
+**The fallback-ladder divergence is concentrated in `CMAP_INVALID`.** That class
+is 9.1% identical and 89.6% different; every other class sits at 67–72%
+identical. This refines design §2.2, which observed that extractors produce
+different garbage but could not say where. The mechanism fits: when `ToUnicode`
+is merely *absent* (the legacy 8-bit and ASCII families) both arms fall back the
+same way and mostly agree. When `ToUnicode` is present but *broken* — which is
+what `CMAP_INVALID` is — each arm makes its own decision about whether to trust
+it, and they decide differently.
+
+**`same chars` is 0.000 in every class.** At the per-font grain, reordering
+disappears entirely. So `pdfplumber`'s 50–65% reordering at page level (§2.2) is
+not scrambling within a font's text — it is a *layout* effect from how it
+interleaves multiple fonts and columns across a page. The reading-order defect
+is a page-assembly defect, not a text-run defect, which is a materially
+different thing to fix and puts it squarely on the extractor.
+
 ---
 
 ## 3. What can and cannot be said about "which extractor is best"
