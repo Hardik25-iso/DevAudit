@@ -258,15 +258,23 @@ draw a fresh smaller sample and label it twice properly.
    batch pass. The interactive pass saw strata and detector context; the batch
    pass does not, and only that one belongs in an agreement calculation.
 
-**Phase 2 ends when** all four hold: 434 observations labelled by both passes;
-disagreements adjudicated into `adjudication`; per-class kappa ≥ 0.7 (the floor
-was fixed in advance — a class below it is blocked from evaluation until the
-guidelines are revised, not waived); and `--detector`, `--sweep`, `--estimate`
-produce the numbers for the write-up. The deliverable is a corpus rate with an
-interval, which is the first version of the headline figure that has error bars
-rather than a caveat paragraph.
+**Phase 2 is closed** (2026-08-15), by decision rather than by meeting its
+criteria. `docs/phase2-results.md` is the deliverable and states the limitation
+in its first section. Do not reopen it to chase the kappa gate unless the
+author asks; the labelling was optional upside and its absence is documented,
+not hidden.
 
-Then Phase 3: benchmark extractors against that ground truth.
+## Next phase
 
-Still open from Phase 1: `check_detector_overlap.py` has never run. It needs
-the drive and is a separate question — do not fold it into a Phase 2 pass.
+**Phase 3 — benchmark extractors against the corpus.** Fresh question, does not
+depend on more labelling to begin. Run the same documents through `pdftotext`,
+`pdfplumber`, PyMuPDF, and an OCR path, and measure which recovers correct text
+from documents the detector flags. The 434 labelled observations give a scored
+subset; the wider corpus gives coverage.
+
+Two things to settle first, with the author: which extractors are in scope, and
+what "recovered correctly" means as a metric — string match against a reference
+is not available, so it will likely be the same structural and encoding checks
+applied to each extractor's output.
+
+Start it in a **fresh session**; this file is the handoff.
