@@ -291,6 +291,9 @@ them. Details in [`docs/LICENSING.md`](docs/LICENSING.md).
 
 ## Documents
 
+- [`docs/OVERVIEW.md`](docs/OVERVIEW.md) - what the project is, in plain
+  language and then in technical terms. Start here if you are new to it.
+
 - [`docs/phase1-results.md`](docs/phase1-results.md) — the full result, with
   breakdowns and caveats
 - [`docs/phase2-results.md`](docs/phase2-results.md) - detector evaluation, the
