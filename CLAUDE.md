@@ -330,6 +330,45 @@ Decided with the author 2026-08-19: `docs/phase1-results.md` is **not** revised.
 It stays traceable to the rows that produced it, and Phase 3 reports the
 correction as its own finding, additively, the way Phase 0 did.
 
+## Phase 3 results — both runs complete, 2026-08-19
+
+`docs/phase3-results.md` is the deliverable. Read it, not this summary.
+
+**Runs, all resumable and all in the manifest:** `labelled-20260819` (317 docs,
+5 pages, 4 text arms, 6,340 rows), `all-20260819` (1,097 non-SCAN docs, page 1,
+5 arms including OCR, 5,515 rows), `fonts-20260819` (2,024 font observations,
+`compare_fonts.py`).
+
+**The corpus estimate moves up by ~9 points and Phase 1 becomes a floor.**
+Concordance fires on 42.8% pooled / 36.6% macro of scorable `CLEAN` pages, so
+36.5% / 48.4% becomes **45.4% / 56.7%**. The pilot said 47% at n=32; the corpus
+said 42.8% at n=276. Nagpur moves 6.4% → 37.7%, Pune MC 14.5% → 38.2%.
+
+**Do not re-litigate whether to believe it.** Three controls were measured and
+all three hold: Pune Metro 0 of 47 pages, `SUSPECT` 1.7% (it is `CMAP_INVALID`,
+not a script failure, so concordance should ignore it and does), `LEGACY` 68.1%.
+All three Phase 1 classes behave as the mechanism predicts.
+
+**`pdftotext` loses 20.6 points more pages than the other three arms**, entirely
+to U+FFFD, and would have ranked *best* on the Phase 1/2 battery alone. All four
+arms agree on only 4.2% of pages, so at least one is wrong on ≥95.8%.
+
+**No ranking between PyMuPDF, pdfplumber and pypdf is claimed.** Structural
+validity reverses between macro (pdfplumber better) and pooled (pdfplumber
+worse); Nashik supplies 152 of 317 documents. Both figures are printed.
+
+**The per-font run localised the §2.2 divergence:** it is concentrated in
+`CMAP_INVALID` (9.1% identical vs 67–72% elsewhere) — where `ToUnicode` is
+present but broken, each arm decides separately whether to trust it. And
+reordering is 0.000 at font grain, so pdfplumber's page-level reordering is
+page assembly, not text-run scrambling.
+
+**Two bugs found the hard way, both fixed.** A column added to `SCHEMA` without
+a `MIGRATIONS` entry does nothing to an existing table. And `select_documents`
+returned before the shuffle on the `all` path, so *both* drive drops left
+body-skewed partial runs rather than random subsets — the completed runs are
+unaffected, but the lesson is that "an interrupted census is a sample".
+
 ## Next phase
 
 **Phase 4 — legacy-font converter and constraint validation.** Phase 3
