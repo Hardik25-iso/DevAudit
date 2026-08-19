@@ -113,6 +113,64 @@ The `CLEAN` rows above are the control, and they behave: both arms quiet, both
 near zero on every signal. So the divergence in §2.2 is a property of corrupt
 documents, not background noise between libraries.
 
+### 2.5 Script concordance is a detector, and it finds corruption Phase 1 missed
+
+The fourth pilot was meant to check only that OCR could identify script on a
+rendered page. It did that — and then found something else.
+
+45 Phase 1 **`CLEAN`** documents, drawn at random (seed 41), page 1:
+
+```
+script mismatch among scorable CLEAN pages: 15/32 = 47%
+                                (13 more skipped: page 1 under 200 chars)
+
+body                              mismatch   ok
+Maharashtra Metro Rail Corpora           0   10   <- publishes in English
+Maharashtra Housing and Area D           0    2
+Patna Municipal Corporation              0    1
+Nagpur Municipal Corporation             6    4
+Pimpri-Chinchwad Municipal Cor           4    0
+Pune Municipal Corporation               3    0
+Nashik Municipal Corporation             1    0
+Lucknow Municipal Corporation            1    0
+```
+
+These pages render 78–95% Devanagari. Their text layers carry 200–1,700
+characters and **zero** Devanagari:
+
+```
+textlayer: "~ ~~ Cfittti&q, •:Wt'{_~ q~H'l~41W'>c61, --11'1'{~ (~~)"    fonts: Helvetica, Helvetica-Bold
+ocr      : 'कार्यालय, नागपूर महानगरपालिका, नागपूर (आस्थापना विभाग)'
+
+textlayer: 'ffi FtT{s rcrflRqrfufiI, Frrft- I z qruffS<q6T frrrm'        fonts: Helvetica
+ocr      : '= चिंचवड महानगरपालिका, पिंपरी-१८ पाणीपुरवठा विभाग'
+```
+
+Legacy remaps embedded under **`Helvetica` and `Times-Roman`** — names that sit
+in `KNOWN_GOOD`, producing plain ASCII with no Latin-1 supplement and no Kruti
+Dev `k`. Every shipped signal is blind to them by construction. This is exactly
+the coverage gap `phase0-schema.md` §11.6 identified and said would need "a new
+signal per family": concordance is that signal, and it is family-agnostic
+because it does not care which mapping produced the output, only that the
+rendered and extracted scripts disagree.
+
+**Why this is believed rather than suspected.** Pune Metro scores 0/10 — the
+negative control working, on the body Phase 1 rated 1% legacy because it
+publishes in English. And the mismatches concentrate in the bodies Phase 1
+already ranked worst. A check that fired randomly would do neither.
+
+**Direction of the error matters here.** `CLAUDE.md` records that every defect
+found so far pushed the corruption estimate *down*, and that the flattering
+direction is the one to distrust. This is the first that pushes it **up**,
+which is the direction that deserves the most scepticism — hence the negative
+control above, and hence the corpus-wide run rather than a claim from n=32.
+
+**Consequence for scope, decided with the author 2026-08-19.** The OCR tier
+widens from ~150 documents to every non-SCAN document at page 1, so the
+concordance rate is measured rather than extrapolated. `phase1-results.md` is
+**not** revised: it stays traceable to the rows that produced it, and Phase 3
+reports the correction as its own finding, in the additive style Phase 0 used.
+
 ---
 
 ## 3. What "recovered correctly" means
