@@ -80,8 +80,13 @@ A 5.8× reduction in structural violations. `काेण्याान ना�
 `कोटेशन नोटीस`.
 
 **Volume is unlikely to be the next lever.** 4.75× bought 5.8×, and the
-residual errors look structural rather than statistical: characters like `Ç`
-are never mapped at all, and the confusions are matra-level.
+residual errors look structural rather than statistical.
+
+One of those structural errors was `Ç`, which turned out to be **repha** and is
+now fixed — see §4.4. It appeared in 8.6% of fam-01 words. Fixing it moved the
+held-out aggregate almost not at all (ocr_similarity median 0.366 → 0.372,
+structural 19.3 → 21.1/1k), which is worth stating plainly: the rule is
+verifiably correct on held-out words and the corpus metric did not reward it.
 
 **Parameter tuning did not help.** Segment sizes and length penalties were
 swept; anchor accuracy sat at 2/6 across every setting while coverage went to
@@ -111,14 +116,61 @@ moved 0.000 → 0.011 while the underlying rate improved 5.8×. The report now
 prints the distribution beside the gate, the same reasoning as printing macro
 beside pooled.
 
+### 4.4 Repha, and a rule that measurement rejected
+
+**Repha** is an `र्` that renders as a mark above a *later* consonant, so a
+legacy font stores it after the cluster it belongs to. It moves **backward**
+past the cluster and its vowel signs — the opposite direction to the i-matra:
+
+```
+ØãðÖãä¶ã½ããÃ¥ã   ->  गृहनिर्माण      (fam-02, `Ã`)
+ºÉÉ´ÉÇVÉÊxÉEò    ->  सार्वजनिक       (fam-01, `Ç`)
+```
+
+Found while hand-seeding `fam-02`, then recognised in `fam-01` as the `Ç` §3
+had recorded as unmapped. Both reorderings are marked, so correct text is never
+touched, and both are tested in each direction.
+
+**Hand-seeding `fam-02` split the two measures apart**, which is the clearest
+evidence yet for §2.1. Held out, n=7, so anecdotal:
+
+| | unseeded | seeded |
+|---|---|---|
+| ocr_similarity median | 0.059 | **0.087** |
+| invalid_rate median | **8.2/1k** | 43.5/1k |
+
+Agreement improved; structural validity got five times worse. Not a
+contradiction — confirmation. Wrong-but-internally-consistent output is
+trivially well-formed, so moving toward *correct* text introduces violations
+that confident nonsense never had.
+
+**A seed-conflict filter was measured and rejected.** The deriver learns
+`ÉÊ`→ि, which swallows the `É` that means `ा`, so `xÉÉÊ¶ÉEò` converted to
+नशिक rather than नाशिक. Dropping derived rules that the seed decomposes
+differently fixed exactly that, and cost far more elsewhere: structural
+violations 19.3 → 36.7/1k, pages under 25/1k 0.753 → 0.226. The 17 rules it
+removed were carrying more legitimate context than the one defect cost.
+
+This is the **fourth candidate rule this project has measured and rejected**,
+and it would have been easy to keep — it fixed the case that was being looked
+at. `seed_segment()` remains in `derive_mapping.py` as the tool that would test
+any future version of the idea.
+
+**Three tuning attempts have now landed neutral-to-negative** on held-out
+numbers: the parameter sweep, repha, and this filter. The two changes that did
+move things were training volume (5.8×) and the DP applier. Rule-level surgery
+looks spent.
+
 ## 5. Limitations
 
 - **The tables are semi-supervised, not purely learned.** `fam-01` is seeded
-  with 13 hand-authored rules. The unseeded run ranks 12 of those 13 first in
+  with 20 hand-authored rules and `fam-02` with 25. The unseeded run ranks 12 of those 13 first in
   its own counts, so the seed settles one genuine ambiguity (`Ê` scores क 77 to
   ि 37) rather than supplying the answer — but the phase was scoped as "learn by
-  alignment", and this is a deviation. The other four families have **no seed**,
-  which is one plausible reason `fam-02` and `fam-05` fail.
+  alignment", and this is a deviation. `fam-03`, `fam-04` and `fam-05` still
+  have **no seed**. Seeding `fam-02` improved its agreement by roughly half
+  while leaving it far below `fam-01`, so the missing seed was part of its
+  failure but not the whole of it.
 - **Circularity is reduced, not removed.** Tables are learned from OCR and
   `ocr_similarity` is measured against OCR. The held-out split separates the
   documents; it does not separate the engine. Structural validity is the only
