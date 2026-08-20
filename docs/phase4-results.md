@@ -92,7 +92,7 @@ verifiably correct on held-out words and the corpus metric did not reward it.
 swept; anchor accuracy sat at 2/6 across every setting while coverage went to
 1.00. The bottleneck was never the segmentation.
 
-## 4. Three defects found by measurement, not by reasoning
+## 4. What measurement found that reasoning did not
 
 **The applier was wrong for a derived table.** Greedy longest-first works for a
 hand table but not a learned one, because the deriver learns rules in context —
