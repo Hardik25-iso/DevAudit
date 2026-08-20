@@ -218,3 +218,47 @@ def test_a_little_devanagari_still_converts():
 
 def test_empty_text_is_not_treated_as_legacy():
     assert not cv.is_legacy_encoded("")
+
+
+# ---------------------------------------------------------------------------
+# 8. repha — the second reordering, in the opposite direction
+# ---------------------------------------------------------------------------
+
+APS = cv.MANUAL_TABLE["fam-02-apscdvpriyan"]
+
+
+@pytest.mark.parametrize("garbage,expected", [
+    ("ãä½ãß‡ãŠ¦ã", "मिळकत"),
+    ("¶ãØãÀ", "नगर"),
+    ("½ãìŒ¾ã", "मुख्य"),
+    ("ØãðÖãä¶ã½ããÃ¥ã", "गृहनिर्माण"),      # needs the repha move
+])
+def test_aps_anchor_conversions(garbage, expected):
+    got, _ = cv.convert(garbage, APS)
+    assert got == expected
+
+
+def test_repha_moves_backward_past_its_cluster():
+    """
+    `र्` renders as a mark above a LATER consonant, so a legacy font stores it
+    after the cluster it belongs to. It moves backward — the opposite direction
+    to the i-matra — and past any vowel sign attached to that cluster.
+    """
+    assert cv.reorder_matras("मा" + cv.MARK + "र्" + "ण") == "र्माण"
+
+
+def test_repha_leaves_unmarked_text_alone():
+    """Same control as the i-matra: correct text must survive untouched."""
+    for good in ["गृहनिर्माण", "कार्यकारी", "सार्वजनिक"]:
+        assert cv.reorder_matras(good) == good
+
+
+def test_aps_converter_does_not_touch_clean_devanagari():
+    for good in ["गृहनिर्माण मुख्य", "कार्यकारी अभियंता"]:
+        assert cv.convert(good, APS) == (good, 0.0)
+
+
+def test_the_two_reorderings_do_not_interfere():
+    """A word needing both moves must get both, not one or neither."""
+    got, _ = cv.convert("ØãðÖãä¶ã½ããÃ¥ã", APS)
+    assert got == "गृहनिर्माण"

@@ -53,6 +53,20 @@ MARK = ""      # private use; never appears in extracted text
 I_MATRA_CLUSTER = re.compile(
     f"{MARK}{I_MATRA}((?:{CONSONANT}{VIRAMA})*{CONSONANT}{fa.NUKTA}?)")
 
+# Repha: an `र्` that renders as a mark above a LATER consonant, so a legacy
+# font stores it after the cluster it belongs to. Logical order puts it first,
+# so it moves backwards — the opposite direction to the i-matra, and past any
+# vowel signs attached to the cluster.
+#
+#   गृहिनमाÃण  ->  गृहिनर्माण      (Ã = र्, sitting after 'मा')
+#
+# Found while hand-seeding fam-02, where the APS encoding uses it heavily.
+# Marked like the i-matra, so already-correct text is never touched.
+REPHA = "र" + VIRAMA
+MATRA_CLASS = f"[{fa.MATRA}{fa.NUKTA}{fa.VIRAMA}]"
+REPHA_CLUSTER = re.compile(
+    f"({CONSONANT}(?:{VIRAMA}{CONSONANT})*{MATRA_CLASS}*?){MARK}{REPHA}")
+
 
 # ---------------------------------------------------------------------------
 # The hand table. Thirteen entries, derived by hand from two anchor pairs and
@@ -65,11 +79,33 @@ I_MATRA_CLUSTER = re.compile(
 # Deliberately partial. Its job is to prove the applier, not to convert the
 # corpus -- that is derive_mapping.py's job.
 # ---------------------------------------------------------------------------
+# fam-02 (APS) is a structurally different encoding and was seeded the same
+# way: read off two side-by-side pairs, then checked against six words that
+# were not used to build it, of which four reconstructed exactly and the two
+# misses were rules deliberately left out.
+#
+#   ãä½ãß‡ãŠ¦ã          -> मिळकत
+#   Ì¾ãÌãÔ©ãã¹ã¶ããÎããè -> व्यवस्थापनाशी
+#   ØãðÖãä¶ã½ããÃ¥ã     -> गृहनिर्माण    (held out; needs the repha rule)
+#
+# Its shape is worth recording: a consonant carries a trailing `ã`, and the
+# bare letter is the half form. `Ìã` is व and `Ì` is व्. That is why single
+# characters matter here in a way they do not for fam-01.
 MANUAL_TABLE = {
     "fam-01-dvttdhruvnor": {
         "xÉ": "न", "¨É": "म", "½þ": "ह", "É": "ा", "MÉ": "ग",
         "®ú": "र", "{É": "प", "±É": "ल", "Eò": "क", "Ê": "ि",
         "¶É": "श", "hÉ": "ण", "ä": "े",
+    },
+    "fam-02-apscdvpriyan": {
+        # vowel signs
+        "ãä": "ि", "ãè": "ी", "ã": "ा", "ì": "ु", "ñ": "े", "ð": "ृ",
+        "â": "ं", "Ã": "र्",
+        # consonants (letter + ã)
+        "½ã": "म", "¶ã": "न", "¹ã": "प", "¦ã": "त", "Îã": "श", "Ìã": "व",
+        "Ôã": "स", "Øã": "ग", "¥ã": "ण", "¾ã": "य", "‡ãŠ": "क",
+        # single-glyph consonants and half forms
+        "ß": "ळ", "À": "र", "Ö": "ह", "ª": "द", "¡": "ड", "Œ": "ख्",
     },
 }
 
@@ -159,7 +195,9 @@ def substitute(text, table):
             # Safe because the deriver learns against VISUAL-order Devanagari
             # (derive_mapping.to_visual_order), so every matra in a learned
             # target is one that still needs moving.
-            pieces.append(target.replace(I_MATRA, MARK + I_MATRA))
+            marked = target.replace(I_MATRA, MARK + I_MATRA)
+            marked = marked.replace(REPHA, MARK + REPHA)
+            pieces.append(marked)
             matched += len(source)
         i = prev
     return "".join(reversed(pieces)), matched
@@ -173,8 +211,13 @@ def reorder_matras(text):
     Unmarked matras are left alone. Passing unmarked text through this is
     therefore a no-op, which is what makes convert() safe to run over
     already-correct Devanagari.
+
+    Two moves, in opposite directions: `ि` goes forward past its cluster, and
+    repha `र्` goes backward past the cluster it sits on.
     """
-    return I_MATRA_CLUSTER.sub(r"\1" + I_MATRA, text).replace(MARK, "")
+    text = I_MATRA_CLUSTER.sub(r"\1" + I_MATRA, text)
+    text = REPHA_CLUSTER.sub(REPHA + r"\1", text)
+    return text.replace(MARK, "")
 
 
 # A page whose text layer already contains this share of Devanagari is not
