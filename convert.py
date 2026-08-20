@@ -74,30 +74,95 @@ MANUAL_TABLE = {
 }
 
 
+# Scoring for the segmentation search below.
+#
+# A matched rule earns its source length, scaled by confidence; an unmatched
+# character costs half a character. So covering the string with confident rules
+# beats leaving gaps, and between two segmentations that both cover it fully,
+# the more confident one wins.
+UNMATCHED_COST = 0.5
+MIN_CONF_WEIGHT = 0.5      # even a low-confidence rule beats leaving a gap
+
+
+def normalize_table(table):
+    """Accept {source: target} or {source: (target, confidence)}."""
+    out = {}
+    for source, value in table.items():
+        if isinstance(value, tuple):
+            out[source] = (value[0], float(value[1]))
+        else:
+            out[source] = (value, 1.0)
+    return out
+
+
 def substitute(text, table):
     """
-    Longest-first replacement. Returns (converted, n_chars_matched).
+    Choose the best whole-string segmentation, not the longest match at each
+    position. Returns (converted, n_chars_matched).
 
-    A plain str.replace loop over the table would re-substitute its own output
-    -- a rule whose target contains another rule's source would fire twice. So
-    this walks the string once and never revisits what it has emitted.
+    Greedy longest-first was the first version and it is wrong for a *derived*
+    table. The deriver learns segmentations in context, so a rule like `ÉEò`->शक
+    is only valid after `Ê¶`; applied greedily it fires anywhere and the rest of
+    the word is left as gaps. Measured: greedy converted 2 of 6 anchor words,
+    and the failures all looked like `xÉÉÊ¶ÉEò` -> `नाांक` -- full coverage,
+    wrong rules.
+
+    Scoring the whole segmentation fixes that, because a wrong long rule that
+    strands the remainder of the word loses to one that covers it cleanly. It
+    is also the same criterion derive_mapping.align() uses, so the applier and
+    the deriver no longer disagree about what a good segmentation is.
     """
-    keys = sorted(table, key=len, reverse=True)
-    out, matched, i = [], 0, 0
-    while i < len(text):
-        for k in keys:
-            if text.startswith(k, i):
-                target = table[k]
-                # Mark matras this table produced, so reordering can move them
-                # without touching matras that were already correct.
-                out.append(MARK + target if target == I_MATRA else target)
-                matched += len(k)
-                i += len(k)
-                break
+    tbl = normalize_table(table)
+    if not tbl:
+        return text, 0
+    by_start = {}
+    for source in tbl:
+        by_start.setdefault(source[0], []).append(source)
+
+    n = len(text)
+    # best[i] = (score, back_index, source_or_None) for text[:i]
+    best = [None] * (n + 1)
+    best[0] = (0.0, -1, None)
+    for i in range(n):
+        if best[i] is None:
+            continue
+        score = best[i][0]
+        # option 1: leave this character alone
+        cand = score - UNMATCHED_COST
+        if best[i + 1] is None or cand > best[i + 1][0]:
+            best[i + 1] = (cand, i, None)
+        # option 2: apply any rule that matches here
+        for source in by_start.get(text[i], ()):
+            if not text.startswith(source, i):
+                continue
+            _, conf = tbl[source]
+            gain = len(source) * (MIN_CONF_WEIGHT + (1 - MIN_CONF_WEIGHT) * conf)
+            j = i + len(source)
+            cand = score + gain
+            if best[j] is None or cand > best[j][0]:
+                best[j] = (cand, i, source)
+
+    # walk the chosen path back
+    pieces, matched, i = [], 0, n
+    while i > 0:
+        _, prev, source = best[i]
+        if source is None:
+            pieces.append(text[prev:i])
         else:
-            out.append(text[i])
-            i += 1
-    return "".join(out), matched
+            target = tbl[source][0]
+            # Mark EVERY matra this table produced, including ones inside a
+            # multi-character target. A derived rule like `Ê´É`->`िव` emits the
+            # matra mid-target; marking only whole-target matras left it
+            # unmarked, so reordering skipped it and `Ê´É¦ÉÉMÉÉiÉÒ±É` came out
+            # as `िवभागातील` instead of `विभागातील`.
+            #
+            # Safe because the deriver learns against VISUAL-order Devanagari
+            # (derive_mapping.to_visual_order), so every matra in a learned
+            # target is one that still needs moving.
+            pieces.append(target.replace(I_MATRA, MARK + I_MATRA))
+            matched += len(source)
+        i = prev
+    return "".join(reversed(pieces)), matched
 
 
 def reorder_matras(text):
