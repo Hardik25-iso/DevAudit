@@ -113,6 +113,30 @@ def to_visual_order(text):
     return TO_VISUAL.sub(r"ि\1", compose_matras(text))
 
 
+def seed_segment(source, seed):
+    """
+    What the seed alone would make of this source, or None if it cannot cover
+    it completely.
+
+    Longest-first, and only used to CHECK a derived rule against hand-verified
+    knowledge -- never to convert. A partial cover returns None, because half a
+    segmentation says nothing about whether the derived rule is wrong.
+    """
+    if not seed:
+        return None
+    keys = sorted(seed, key=len, reverse=True)
+    out, i = [], 0
+    while i < len(source):
+        for k in keys:
+            if source.startswith(k, i):
+                out.append(seed[k])
+                i += len(k)
+                break
+        else:
+            return None
+    return "".join(out)
+
+
 # ---------------------------------------------------------------------------
 # stage A — candidate word pairs
 # ---------------------------------------------------------------------------
@@ -381,6 +405,18 @@ def derive(conn, family_id, iterations, verbose=True, split_docs=None):
         tgt, n = targets.most_common(1)[0]
         ndocs = len(docs[src][tgt])
         conf = n / sum(targets.values())
+        # MEASURED AND REJECTED, 2026-08-20. Dropping derived rules that the
+        # seed decomposes differently was principled and fixed a real visible
+        # defect -- the deriver learns `ÉÊ`->ि, which swallows the `É` that
+        # means ा, so `xÉÉÊ¶ÉEò` came out as नशिक rather than नाशिक.
+        #
+        # It also made the aggregate clearly worse: held-out structural
+        # violations went 19.3 -> 36.7/1k and pages under 25/1k went 0.753 ->
+        # 0.226, because the 17 rules it removed were carrying more legitimate
+        # context than the one defect cost. `seed_segment()` is kept because it
+        # is the tool that would test any future version of this idea.
+        #
+        # Fourth candidate rule this project has measured and rejected.
         if src in seed and seed[src] == tgt:
             table[src] = {"target": tgt, "n": n, "docs": ndocs, "conf": 1.0}
             continue

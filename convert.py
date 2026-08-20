@@ -96,6 +96,12 @@ MANUAL_TABLE = {
         "xÉ": "न", "¨É": "म", "½þ": "ह", "É": "ा", "MÉ": "ग",
         "®ú": "र", "{É": "प", "±É": "ल", "Eò": "क", "Ê": "ि",
         "¶É": "श", "hÉ": "ण", "ä": "े",
+        # Added after repha was implemented for fam-02. `Ç` is the same
+        # feature here and appears in 8.6% of all fam-01 words -- it was the
+        # unmapped character phase4-results.md §3 named as a residual defect.
+        # Verified on three words held out of construction: फॉर्म, पूर्व, सर्व.
+        "Ç": "र्", "ºÉ": "स", "´É": "व", "VÉ": "ज", "Ö": "ू",
+        "¡ò": "फ", "Éì": "ॉ",
     },
     "fam-02-apscdvpriyan": {
         # vowel signs
