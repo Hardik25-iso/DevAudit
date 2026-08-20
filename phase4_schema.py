@@ -129,6 +129,33 @@ CREATE TABLE IF NOT EXISTS conversion (
     UNIQUE(run_id, sha256, page, family_id)
 );
 CREATE INDEX IF NOT EXISTS idx_conv_run ON conversion(run_id);
+
+-- ---------------------------------------------------------------------------
+-- page_text — full page text for deriving mapping tables.
+--
+-- extraction.text_sample holds 600 characters, which is a field designed for
+-- eyeballing a page with the drive detached. Training a ~300-rule substitution
+-- cipher on it means learning from ~600KB of parallel text across the corpus,
+-- and the held-out evaluation showed what that buys: coverage 0.684 and
+-- structural validity 0.000.
+--
+-- This table holds the whole page, for the two arms training needs. Separate
+-- from `extraction` because the grain is the same but the purpose is not: that
+-- table is the Phase 3 benchmark record and its rows should not be rewritten
+-- to serve Phase 4.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS page_text (
+    sha256      TEXT NOT NULL,
+    page        INTEGER NOT NULL,
+    arm         TEXT NOT NULL,          -- pymupdf | ocr
+    text        TEXT,
+    n_chars     INTEGER,                -- non-whitespace
+    dev_share   REAL,
+    error       TEXT,
+    extracted_at TEXT,
+    PRIMARY KEY (sha256, page, arm)
+);
+CREATE INDEX IF NOT EXISTS idx_ptext_arm ON page_text(arm);
 """
 
 
