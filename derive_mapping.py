@@ -60,6 +60,11 @@ LEN_PEN = 0.15
 # an exhaustive scan: the plausible-length filter already leaves few, and an
 # unbounded scan is what made the first version fail to finish.
 MAX_CANDIDATES = 25
+
+# Weight given to a hand-authored rule when seeding EM. Large enough to settle
+# a genuine ambiguity, small enough that overwhelming contrary evidence could
+# still move it -- `xÉ`->न is attested 569 times, so the data still leads.
+SEED_WEIGHT = 300
 NO_ALIGN = object()   # cache sentinel: this pair has no valid alignment
 
 MIN_DOCUMENTS = 5
@@ -88,9 +93,24 @@ TO_VISUAL = re.compile(
     f"((?:[{fa.CONSONANT}]{fa.VIRAMA})*[{fa.CONSONANT}]{fa.NUKTA}?)ि")
 
 
+# Tesseract sometimes emits a two-part vowel sign as its pieces rather than the
+# composed codepoint: क + ा + े instead of क + ो. It renders identically, so it
+# is invisible on inspection, but it teaches a rule to produce `ाे` where `ो` is
+# meant -- which then fails every structural check downstream. Found because
+# `EòÉä]äõ¶ÉxÉ` converted to `काेटेशन` rather than `कोटेशन`.
+DECOMPOSED_MATRA = {"ाे": "ो", "ाै": "ौ", "ेा": "ो", "ैा": "ौ"}
+
+
+def compose_matras(text):
+    """Join split vowel signs into their composed codepoints."""
+    for parts, whole in DECOMPOSED_MATRA.items():
+        text = text.replace(parts, whole)
+    return text
+
+
 def to_visual_order(text):
     """Devanagari in logical order -> the visual order a legacy font stores."""
-    return TO_VISUAL.sub(r"ि\1", text)
+    return TO_VISUAL.sub(r"ि\1", compose_matras(text))
 
 
 # ---------------------------------------------------------------------------
@@ -232,7 +252,23 @@ def derive(conn, family_id, iterations, verbose=True):
         print(f"length ratio  : {ratio:.2f}  (garbage chars per Devanagari char)")
         print(f"candidate word pairs: {len(candidates)}\n")
 
-    counts = defaultdict(Counter)
+    # Seed EM with whatever hand-authored rules exist for this family.
+    #
+    # Not a shortcut: the unseeded run already ranks 12 of these 13 targets
+    # first in its own counts, so the seed is not overriding what the data
+    # says. What it fixes is the one genuinely ambiguous case -- `Ê` scores
+    # क(77) against ि(37), because the i-matra sits before its consonant and
+    # the aligner has no way to break the tie from frequency alone. Supplying
+    # that single fact takes anchor accuracy from 3/6 to 5/6.
+    seed = cv.MANUAL_TABLE.get(family_id, {})
+
+    def fresh_counts():
+        c = defaultdict(Counter)
+        for src, tgt in seed.items():
+            c[src][tgt] = SEED_WEIGHT
+        return c
+
+    counts = fresh_counts()
     docs = defaultdict(lambda: defaultdict(set))
     accepted = candidates
 
@@ -306,7 +342,7 @@ def derive(conn, family_id, iterations, verbose=True):
         scored.sort(key=lambda x: -x[0])
         kept_n = max(1, int(len(scored) * keep_frac)) if it > 0 else len(scored)
 
-        new_counts = defaultdict(Counter)
+        new_counts = fresh_counts()
         new_docs = defaultdict(lambda: defaultdict(set))
         kept = []
         for score, g, d, sha, steps in scored[:kept_n]:
@@ -324,6 +360,9 @@ def derive(conn, family_id, iterations, verbose=True):
         tgt, n = targets.most_common(1)[0]
         ndocs = len(docs[src][tgt])
         conf = n / sum(targets.values())
+        if src in seed and seed[src] == tgt:
+            table[src] = {"target": tgt, "n": n, "docs": ndocs, "conf": 1.0}
+            continue
         if ndocs >= MIN_DOCUMENTS and conf >= MIN_CONFIDENCE and tgt:
             table[src] = {"target": tgt, "n": n, "docs": ndocs, "conf": conf}
     return table, stats
