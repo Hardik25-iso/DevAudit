@@ -369,8 +369,64 @@ returned before the shuffle on the `all` path, so *both* drive drops left
 body-skewed partial runs rather than random subsets — the completed runs are
 unaffected, but the lesson is that "an interrupted census is a sample".
 
+## Where Phase 4 stands
+
+Design in `docs/phase4-design.md`, results in `docs/phase4-results.md`. Read
+those, not this summary. **Partial result: one family works usefully, one fails
+instructively, three are too thin to judge.**
+
+Shipped and tested (116 tests): `phase4_schema.py`, `legacy_families.py`,
+`convert.py`, `derive_mapping.py`, `evaluate_conversion.py`,
+`extract_training.py`.
+
+**Five families cover 94% of convicted legacy observations**, clustered by
+output signature — font names are useless (546 names, commonest are F1-F8 and
+Calibri). Every cluster is label-pure, which is the evidence they are real
+encodings.
+
+**Held-out medians, and only fam-01 has a test set worth the name:**
+
+| family | rules | cover | inval/1k | ocr_sim | test |
+|---|---|---|---|---|---|
+| fam-01-dvttdhruvnor | 183 | 0.73 | 19.3 | 0.366 | 93 |
+| fam-02-apscdvpriyan | 154 | 0.69 | **8.2** | **0.059** | 7 |
+| fam-03-dvbwttsurekh | 174 | 0.75 | 12.6 | 0.366 | 4 |
+| fam-04-f1 | 144 | 0.60 | 52.1 | 0.267 | 3 |
+| fam-05-tte2a71928t0 | 69 | 0.18 | 372.5 | 0.022 | 9 |
+
+**`fam-02` is the failure the metric design was built to catch:** best
+structural validity of any family, worst OCR agreement. It produces confident,
+well-formed Devanagari that is not the right Devanagari. Structural validity
+alone — the designated primary measure — would have ranked it best.
+
+**Three defects found by measurement, all fixed and all worth not
+rediscovering:**
+
+- Greedy longest-first is wrong for a *derived* table (rules are learned in
+  context). DP over the whole segmentation fixed it.
+- The converter corrupted clean documents — 11 of 11 changed, 5 made worse,
+  because rules like `x`->क fire on Latin text inside Marathi pages.
+  `convert()` now refuses text already above 5% Devanagari.
+- Phase 1's 2.0/1k threshold is nearly blind as a converter grade: it moved
+  0.000 -> 0.011 while the underlying rate improved 5.8x.
+
+**Training volume was the big lever and is probably spent.** Re-extracting
+whole pages over pages 1-5 (`page_text`, 2,849,365 chars vs 599,444) cut
+violations 5.8x and doubled OCR agreement. A further 5x is unlikely to close a
+gap this size; the residual errors are structural (`Ç` never maps at all).
+
+**Do not re-run the parameter sweep.** Segment sizes and length penalties were
+swept; anchor accuracy sat at 2/6 across every setting. The bottleneck was
+never segmentation.
+
+**fam-01 is seeded with 13 hand rules** — a deviation from "learn by
+alignment", documented in results §5. The unseeded run ranks 12 of the 13
+first in its own counts, so the seed settles one ambiguity rather than
+supplying answers. The other four have no seed.
+
 ## Next phase
 
-**Phase 4 — legacy-font converter and constraint validation.** Phase 3
-establishes what no extractor recovers; building the reverse mapping table that
-would recover it is Phase 4. Start it in a **fresh session**.
+**Phase 5 — write-up and release**, or a Phase 4b that takes the converter
+further. Results §7 lists what 4b would need: a second hand-seeded family, more
+paired pages for the thin families, and a few hundred hand-transcribed lines to
+break the OCR circularity that the held-out split can only reduce.
