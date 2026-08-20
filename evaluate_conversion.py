@@ -156,7 +156,28 @@ def report(conn, run_id):
               f"{vb:>14.3f}{va:>13.3f}"
               f"{sum(r['ocr_similarity'] or 0 for r in s)/n:>9.3f}")
 
+    # The binary gate alone is close to useless as a progress measure. Phase 1's
+    # 2.0/1k threshold was calibrated to DETECT corruption in native Devanagari,
+    # not to grade a converter, and one bad sequence on a page fails it. Between
+    # two runs the gate moved 0.000 -> 0.011 while the underlying violation rate
+    # fell 111/1k -> 19/1k, a 5.8x improvement it showed almost none of. So the
+    # distribution is printed beside it, the same reasoning as reporting macro
+    # beside pooled.
     test = [r for r in rows if r["split"] == "test"]
+    if test:
+        rates = sorted(r["invalid_rate_after"] or 0 for r in test)
+        sims = sorted(r["ocr_similarity"] or 0 for r in test)
+        mid = len(rates) // 2
+        print(f"\n--- held-out distribution (n={len(test)}) ---")
+        print(f"  invalid_rate_after  median {rates[mid]:.1f}/1k"
+              f"   mean {sum(rates)/len(rates):.1f}/1k")
+        print(f"  ocr_similarity      median {sims[mid]:.3f}"
+              f"   mean {sum(sims)/len(sims):.3f}")
+        for t in (2, 10, 25, 50):
+            share = sum(1 for x in rates if x < t) / len(rates)
+            tag = "   <- the shipped gate" if t == 2 else ""
+            print(f"    pages under {t:>3}/1k invalid : {share:.3f}{tag}")
+
     if test:
         print("\n--- held-out sample (the number that counts) ---")
         for r in sorted(test, key=lambda r: -(r["ocr_similarity"] or 0))[:2]:
