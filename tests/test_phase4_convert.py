@@ -185,3 +185,36 @@ def test_cmap_invalid_is_not_convertible():
     to text that needs no substitution (design §5).
     """
     assert "CMAP_INVALID" not in lf.CONVERTIBLE
+
+
+# ---------------------------------------------------------------------------
+# 7. the legacy gate — the converter must refuse text it cannot help
+# ---------------------------------------------------------------------------
+
+def test_text_that_is_already_devanagari_is_refused():
+    """
+    The negative control, as a unit test. Without this gate the derived table
+    changed 11 of 11 clean Devanagari pages and made 5 structurally worse:
+    single-character rules like `x`->क and `V`->व fire on the ordinary Latin
+    text that sits inside Marathi documents.
+    """
+    table = {"x": ("क", 1.0), "V": ("व", 1.0)}
+    clean = "नाशिक महानगरपालिका Page 1 xV"
+    assert cv.convert(clean, table) == (clean, 0.0)
+
+
+def test_legacy_text_is_not_refused():
+    assert cv.is_legacy_encoded("xÉÉÊ¶ÉEò ¨É½þÉxÉMÉ®ú{ÉÉÊ±ÉEòÉ")
+
+
+def test_a_little_devanagari_still_converts():
+    """
+    Legacy pages often carry a stray correct glyph. The gate is a share, not a
+    presence test, or one correct character would veto a whole page.
+    """
+    mostly_legacy = "xÉÉÊ¶ÉEò " * 10 + "क"
+    assert cv.is_legacy_encoded(mostly_legacy)
+
+
+def test_empty_text_is_not_treated_as_legacy():
+    assert not cv.is_legacy_encoded("")

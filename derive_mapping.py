@@ -233,8 +233,13 @@ def align(g, d, logp, diag_weight):
     return dp[n][m] / max(n, 1), steps[::-1]
 
 
-def derive(conn, family_id, iterations, verbose=True):
-    pages = page_pairs(conn, family_id)
+def derive(conn, family_id, iterations, verbose=True, split_docs=None):
+    """
+    Learn a table. `split_docs` restricts derivation to those documents, which
+    is how the held-out evaluation stays honest -- a table derived from every
+    document could not then be tested on any of them.
+    """
+    pages = page_pairs(conn, family_id, split_docs)
     if not pages:
         return {}, {"pages": 0}
     # Global length ratio, measured rather than assumed.

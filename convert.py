@@ -177,6 +177,27 @@ def reorder_matras(text):
     return I_MATRA_CLUSTER.sub(r"\1" + I_MATRA, text).replace(MARK, "")
 
 
+# A page whose text layer already contains this share of Devanagari is not
+# legacy-encoded -- that near-total ABSENCE of Devanagari is the defining
+# property of the failure, and the signal the whole project detects on. So
+# above this threshold the converter refuses.
+#
+# Added because the negative control failed without it: applied blind to clean
+# Devanagari pages, the derived table changed 11 of 11 and made 5 structurally
+# worse. Single-character rules like `x`->क and `V`->व fire on the ordinary
+# Latin text that sits inside Marathi documents. A converter that corrupts
+# working documents is worse than one that does nothing.
+MAX_DEV_SHARE = 0.05
+
+
+def is_legacy_encoded(text):
+    """Cheap gate: does this text look like it needs converting at all?"""
+    body = re.sub(r"\s+", "", text)
+    if not body:
+        return False
+    return len(fa.DEV_RANGE.findall(body)) / len(body) <= MAX_DEV_SHARE
+
+
 def convert(text, table):
     """Full conversion. Returns (text, coverage) — coverage is the share of
     characters the table actually matched.
@@ -184,7 +205,13 @@ def convert(text, table):
     Coverage is returned rather than computed later because a table that
     rewrites 3% of a page is not converting it, and every other measure in
     design §4 would score that non-conversion well by default.
+
+    Text that is already Devanagari is returned untouched (see MAX_DEV_SHARE).
+    Refusing is the correct answer there, not a limitation: the converter has
+    nothing to fix and every edit it makes can only do harm.
     """
+    if not is_legacy_encoded(text):
+        return text, 0.0
     subbed, matched = substitute(text, table)
     return reorder_matras(subbed), (matched / len(text) if text else 0.0)
 
