@@ -122,18 +122,34 @@ def page_pairs(conn, family_id, split_docs=None):
     (garbage_words, deva_words, sha256) per page, for pages whose font belongs
     to this family and where OCR saw Devanagari the text layer did not.
     """
+    # Prefer page_text: whole pages over pages 1..5, rather than the 600-char
+    # text_sample over page 1 only. Falls back to `extraction` when page_text
+    # has not been populated, so the deriver still runs without the drive pass.
     rows = conn.execute("""
-        SELECT DISTINCT e.sha256, e.text_sample AS garbage, o.text_sample AS ocr
-        FROM extraction e
-        JOIN extraction o
-          ON o.run_id = e.run_id AND o.sha256 = e.sha256
-         AND o.page = e.page AND o.arm = 'ocr'
-        JOIN font_observation f ON f.sha256 = e.sha256
+        SELECT DISTINCT t.sha256, t.text AS garbage, o.text AS ocr
+        FROM page_text t
+        JOIN page_text o
+          ON o.sha256 = t.sha256 AND o.page = t.page AND o.arm = 'ocr'
+        JOIN font_observation f ON f.sha256 = t.sha256
         JOIN family_member m ON m.obs_id = f.obs_id
-        WHERE e.arm = 'pymupdf' AND m.family_id = ?
-          AND e.n_chars > 200 AND o.n_chars > 200
-          AND e.dev_share < 0.05 AND o.dev_share > 0.40
+        WHERE t.arm = 'pymupdf' AND m.family_id = ?
+          AND t.n_chars > 200 AND o.n_chars > 200
+          AND t.dev_share < 0.05 AND o.dev_share > 0.40
     """, (family_id,)).fetchall()
+
+    if not rows:
+        rows = conn.execute("""
+            SELECT DISTINCT e.sha256, e.text_sample AS garbage, o.text_sample AS ocr
+            FROM extraction e
+            JOIN extraction o
+              ON o.run_id = e.run_id AND o.sha256 = e.sha256
+             AND o.page = e.page AND o.arm = 'ocr'
+            JOIN font_observation f ON f.sha256 = e.sha256
+            JOIN family_member m ON m.obs_id = f.obs_id
+            WHERE e.arm = 'pymupdf' AND m.family_id = ?
+              AND e.n_chars > 200 AND o.n_chars > 200
+              AND e.dev_share < 0.05 AND o.dev_share > 0.40
+        """, (family_id,)).fetchall()
 
     out = []
     for r in rows:
