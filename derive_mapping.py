@@ -141,10 +141,58 @@ def seed_segment(source, seed):
 # stage A — candidate word pairs
 # ---------------------------------------------------------------------------
 
-def page_pairs(conn, family_id, split_docs=None):
+# A page must LOOK like the family, not merely sit in a document that contains
+# it. `family_member` is keyed per observation, so a document carrying fonts
+# from two families feeds both training sets: 6 of 431 documents (1.4%) are
+# multi-family, and they contributed 105 deep pages to fam-01 and 140 to fam-03
+# — enough to dominate what Phase 4b's extraction changed.
+#
+# Excluding those documents wholesale improved fam-01's held-out structural
+# validity 28.7 -> 23.4/1k, so a per-page version looked like the better fix:
+# compare each page's character signature against the family centroid, and
+# catch minor-font pages inside single-family documents too.
+#
+# MEASURED AND REJECTED, 2026-08-21. It is DEFAULT OFF.
+#
+#   fam-01  no filter  373 pages  invalid 28.7/1k  ocr_sim 0.272
+#           floor 0.7  372 pages  invalid 28.1/1k  ocr_sim 0.278
+#   fam-02  no filter   85 pages  invalid 18.4/1k  ocr_sim 0.012
+#           floor 0.7   45 pages  invalid 26.3/1k  ocr_sim 0.011
+#
+# One page dropped from fam-01, half of fam-02's training data dropped, and
+# fam-02 got 43% worse. The reason is a grain mismatch, not contamination: the
+# centroids were built from `excerpt` text, which is short and legacy-dense,
+# and this applies them to whole PAGES carrying English headers, tender numbers
+# and tables. A perfectly good page scores low for being a page.
+#
+# Kept, off, because the idea is sound and a centroid rebuilt from page text
+# would be the way to test it properly. Fifth candidate rule this project has
+# measured and rejected.
+PAGE_SIGNATURE_FLOOR = 0.70
+
+
+def looks_like_family(text, centroid):
+    """Cosine between this page's character profile and the family centroid."""
+    import legacy_families as lf
+    sig = lf.signature(text or "")
+    return lf.cosine(sig, centroid) if sig else 0.0
+
+
+def family_centroid(conn, family_id):
+    import json
+    row = conn.execute("SELECT centroid FROM font_family WHERE family_id=?",
+                       (family_id,)).fetchone()
+    return json.loads(row[0]) if row and row[0] else None
+
+
+def page_pairs(conn, family_id, split_docs=None, require_signature=False):
     """
     (garbage_words, deva_words, sha256) per page, for pages whose font belongs
     to this family and where OCR saw Devanagari the text layer did not.
+
+    `require_signature` additionally demands the page look like the family. It
+    is OFF by default: measured, it helps fam-01 not at all and makes fam-02
+    43% worse. See the note on PAGE_SIGNATURE_FLOOR.
     """
     # Prefer page_text: whole pages over pages 1..5, rather than the 600-char
     # text_sample over page 1 only. Falls back to `extraction` when page_text
@@ -175,9 +223,13 @@ def page_pairs(conn, family_id, split_docs=None):
               AND e.dev_share < 0.05 AND o.dev_share > 0.40
         """, (family_id,)).fetchall()
 
+    centroid = family_centroid(conn, family_id) if require_signature else None
+
     out = []
     for r in rows:
         if split_docs is not None and r["sha256"] not in split_docs:
+            continue
+        if centroid and looks_like_family(r["garbage"], centroid) < PAGE_SIGNATURE_FLOOR:
             continue
         g = GARBAGE_WORD.findall(r["garbage"] or "")
         d = [to_visual_order(w) for w in DEVA_WORD.findall(r["ocr"] or "")]

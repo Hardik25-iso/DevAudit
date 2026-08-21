@@ -275,9 +275,34 @@ cause remains unidentified. The plausible one is distributional: deep pages of a
 long tender are annexes, tables and forms, not the prose the aligner learns
 from and the test set contains. That is untested.
 
-The fix `page_pairs` needs is to require the family's font to dominate the page
-rather than merely appear in the document. It is not applied here, because
-applying it would change every number above mid-phase.
+### 7.2.1 The fix for it was measured and rejected
+
+The obvious repair is to require a page to *look* like the family rather than
+merely sit in a document containing it — compare each page's character
+signature against the family centroid, the same mechanism that defined the
+families. Built, measured on a fixed held-out set, and **rejected**:
+
+| | train pages | invalid/1k | ocr_sim |
+|---|---|---|---|
+| fam-01, no filter | 373 | 28.7 | 0.272 |
+| fam-01, floor 0.70 | 372 | 28.1 | 0.278 |
+| fam-02, no filter | 85 | **18.4** | 0.012 |
+| fam-02, floor 0.70 | 45 | 26.3 | 0.011 |
+
+It drops one page from fam-01 and half of fam-02's training data, making fam-02
+43% worse. (Absolute values here are not comparable to §7.1.1 — different
+scoring path — only the contrast within each pair is.)
+
+The cause is a **grain mismatch, not contamination**: the centroids were built
+from `excerpt` text, which is short and legacy-dense, and this applies them to
+whole *pages* carrying English headers, tender numbers and tables. A perfectly
+good page scores low for being a page.
+
+Kept in `derive_mapping.py`, default off, with the numbers in the comment. A
+centroid rebuilt from page text is how the idea would be tested properly.
+
+**Fifth candidate rule this project has measured and rejected**, and the second
+inside Phase 4. Both fixed the case being looked at and cost more elsewhere.
 
 ### 7.3 The drive-drop guard did not fire, and had never worked here
 
