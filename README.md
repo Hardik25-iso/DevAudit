@@ -154,7 +154,7 @@ to a checksum and a URL.
 ```bash
 python font_audit.py <folder>        # audit a folder directly
 python export_manifest.py            # build the releasable manifest
-python -m pytest tests/              # 60 tests
+python -m pytest tests/              # 124 tests (17 Phase 1 calibration)
 ```
 
 ### Ground truth
