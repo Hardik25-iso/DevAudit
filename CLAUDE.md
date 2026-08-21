@@ -5,9 +5,14 @@ Read this first. It replaces re-reading the whole project history.
 ## What this is
 
 Measuring how often Indian government PDFs carry a text layer that extracts
-without error and is linguistically wrong. Phase 1 is complete and answered
-GO. See `README.md` for the finding, `docs/phase1-results.md` for the full
-result and caveats, `docs/LICENSING.md` for what may and may not be collected.
+without error and is linguistically wrong. **Phases 0-5 are done and pushed.**
+
+`docs/REPORT.md` is the consolidated write-up and the front door — send a
+reader there. `docs/phaseN-results.md` are the detailed record behind it.
+`docs/LICENSING.md` is what may and may not be collected.
+
+**The current headline is 45.4% macro / 56.7% pooled.** Phase 1's 36.5% /
+48.4% is the floor it turned out to be, kept intact in `phase1-results.md`.
 
 ## How the author wants to work
 
@@ -24,14 +29,26 @@ result and caveats, `docs/LICENSING.md` for what may and may not be collected.
 
 **Storage.** Bulk PDFs live on `D:\DevAudit-data\raw` (external, frequently
 detached). `manifest.sqlite` lives on the SSD inside the repo, deliberately —
-the drive has dropped mid-run twice and the manifest survived both times. If
-every document errors with "file missing", the drive is unplugged.
+the drive has dropped mid-run **three times** and the manifest survived every
+one. If every document errors with "file missing", the drive is unplugged.
+
+**An interrupted census is a sample.** Both Phase 3 drive drops left partial
+runs that were body-skewed rather than random, because the document list was
+not shuffled. Every selection path now shuffles; keep it that way.
 
 **The instrument fails toward silence, never toward alarm.** Every defect found
 in the original audit tool pushed the corruption estimate *down*. A detector
 that over-fires inflates the headline in the flattering direction, which is the
 one to distrust. Measure a candidate detector against labelled ground truth
-before shipping it; three were measured and rejected.
+before shipping it; **four have now been measured and rejected**, the latest
+being Phase 4's seed-conflict filter, which fixed the defect being looked at
+and made everything else worse.
+
+It recurred in three new places after Phase 2. `pdftotext` scores 0.001
+mojibake while emitting 43.7% U+FFFD, so it would have ranked *best* on the
+signal battery. Phase 4's `fam-02` scores the best structural validity of any
+family while producing Devanagari that is not the right Devanagari. And Phase
+1's 2.0/1k gate moved 0.000 -> 0.011 while the rate under it improved 5.8x.
 
 **Classify by output, not by font name.** 32% of legacy documents are caught
 with no font name matching at all — some "font names" are auto-generated subset
@@ -66,7 +83,7 @@ python -m pip install -r requirements.txt   # first time; see the pip note above
 python collect.py --dry-run           # discover, download nothing
 python collect.py --per-source 60     # random draw, capped per body
 python audit_corpus.py                # audit into manifest, print report
-python -m pytest tests/               # 60 tests (17 Phase 1 calibration)
+python -m pytest tests/               # 124 tests (17 Phase 1 calibration)
 ```
 
 Phase 2, in order. Only `extract_observations.py` needs the external drive:
@@ -101,6 +118,25 @@ python evaluate_extractors.py --run all-20260819 --sweep replacement
 OCR needs Tesseract at `config.TESSERACT_EXE` and language data in
 `data/tessdata/` (gitignored, ~7MB, `tessdata_fast` `hin`+`mar`). Without it
 the concordance report degrades cleanly and says so; every other report works.
+
+Phase 4. Only `extract_training.py` needs the external drive:
+
+```bash
+python phase4_schema.py                   # create the tables (idempotent)
+python legacy_families.py --build         # cluster by output signature
+python extract_training.py --max-pages 5  # the one drive-attached pass
+python derive_mapping.py --family fam-01-dvttdhruvnor
+python convert.py --family fam-01-dvttdhruvnor --demo
+python evaluate_conversion.py --family fam-01-dvttdhruvnor --run eval-N
+python evaluate_conversion.py --negative-control   # run it after EVERY table
+```
+
+Phase 5. Neither needs the drive:
+
+```bash
+python export_manifest.py                 # refuses if the guard fires
+python -m pytest tests/                   # 124 tests
+```
 
 Pipe verbose runs to a log and read the tail — full audit output is hundreds of
 lines and every one of them stays in the session context afterwards:
@@ -424,9 +460,60 @@ alignment", documented in results §5. The unseeded run ranks 12 of the 13
 first in its own counts, so the seed settles one ambiguity rather than
 supplying answers. The other four have no seed.
 
+## Where Phase 5 stands
+
+Design in `docs/phase5-design.md`, deliverable in `docs/REPORT.md`.
+**Shipped and pushed 2026-08-21** (30 commits, `dbeeb49..1bdb59a`).
+
+`docs/REPORT.md` is the front door now — the consolidated write-up. The five
+phase documents are the detailed record behind it. Send a reader there, not to
+README.
+
+**The headline moved, deliberately.** README and OVERVIEW now lead with
+**45.4% macro / 56.7% pooled** and present Phase 1's 36.5% / 48.4% as the floor
+Phase 3 showed it to be. `docs/phase1-results.md` is **not** revised and must
+not be — it stays traceable to the rows that produced it, and the correction is
+reported additively. The correction ships with its three controls attached
+(Pune Metro 0 of 47, `SUSPECT` 1.7%, `LEGACY` 68.1%) and both limitations named.
+
+**§9.7 is settled on the technical side and enforced, not remembered.**
+`export_manifest.py` refuses to write any column that quotes document text —
+Devanagari, a DOB pattern, or a caste category — outside the identifier columns
+the rebuild needs. The principle: **an exported column may identify a document
+or measure it, never quote it.**
+
+The guard fired on its first run, on `filename` and `source_url`: 65 filenames
+are Marathi document *titles* (`नामनिर्देशन_अर्ज_व_शासन_पत्र`), not names of
+people, and the rebuild cannot fetch without them. Inspected, then exempted as
+identifiers, with the inspection recorded in the code. **Do not widen the
+exemption set without re-running that inspection.**
+
+**Re-measure §9.7 whenever a phase adds a text table.** Phase 0 recorded 39
+excerpts across 11 documents; Phases 2, 3 and 4 each added one and none
+re-measured, so by Phase 5 it was ~11.1M characters with 3,416 DOB matches
+across `excerpt`, `extraction`, `page_text` and `conversion`. A working
+converter makes this worse by design — `conversion.text_after` holds 396 of
+those in readable form.
+
+**What is released:** `manifest.csv` (1,602 rows), `mapping_tables.csv` (688
+rules, 5 families), `rebuild_corpus.py`, `summary.json`, `LICENSING.md`,
+`MAPPING_TABLES.md`. Never the documents, never `manifest.sqlite`.
+
+## Open, and genuinely the author's
+
+**The DPDP 2023 question.** The technical position is settled and enforced;
+whether a qualified person should read the Act against this corpus before the
+release is promoted has not been decided. Nothing in this repo is legal advice
+and "already public" does not obviously settle it.
+
 ## Next phase
 
-**Phase 5 — write-up and release**, or a Phase 4b that takes the converter
-further. Results §7 lists what 4b would need: a second hand-seeded family, more
-paired pages for the thin families, and a few hundred hand-transcribed lines to
-break the OCR circularity that the held-out split can only reduce.
+**Phase 4b**, if anything. Results §7 lists what it would need: a second
+hand-seeded family, more paired pages for the thin families, and a few hundred
+hand-transcribed lines to break the OCR circularity that a held-out split can
+only reduce.
+
+**Do not spend more effort on rule-level tuning.** Three attempts — the
+parameter sweep, repha for fam-01, and the seed-conflict filter — all landed
+neutral-to-negative on held-out numbers. The two changes that moved anything
+were training volume (5.8x) and the DP applier.
