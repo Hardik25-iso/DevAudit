@@ -23,3 +23,6 @@ desktop.ini
 
 # Tesseract language data — fetched by hand, see docs/phase3-design.md §4
 data/tessdata/
+
+# Temp orchestration scripts (leading underscore)
+_*.py
