@@ -237,7 +237,7 @@ volume is the only variable changing.
 | fam-01 | 0.366 → 0.359 | 19.3 → **29.6** | 1.15× |
 | **fam-02** | 0.087 → **0.200** | 43.5 → **26.8** | 2.1× |
 | fam-03 | 0.366 → 0.336 | 12.6 → **32.9** | 2.9× |
-| fam-04 | 0.267 → 0.267 | 52.1 → 52.1 | **none** |
+| fam-04 | 0.267 → **0.386** | 52.1 → 59.3 | 4.7× (re-run) |
 | fam-05 | 0.022 → 0.028 | 372.5 → **217.9** | 1.9× |
 
 **`fam-02` improved on both measures at once**, which nothing in Phase 4
@@ -247,8 +247,25 @@ hypothesis confirmed on the test designed for it.
 
 `fam-05` halved its violations and remains unusable at 0.028 agreement.
 
-**`fam-04` is a null result, not a finding.** It received no new data at all —
-see §7.3 — so its unchanged row means the treatment was never applied.
+**`fam-04` was a null and has since been re-run.** Its first attempt received
+no data at all (§7.3). Re-extracted 2026-08-21 with the fixed guard: 550 pages
+per arm, zero errors, training data 133,446 → 627,133 characters (4.7×, the
+largest increase any family received).
+
+Agreement rose 0.267 → 0.386, a 44% gain. **The held-out set is still 3 pages.**
+That is the finding worth keeping: 4.7× the training data did not buy a single
+extra held-out *document*, because the split is by document and fam-04 has only
+22 of them. Structural validity moved the wrong way (52.1 → 59.3/1k). Negative
+control passes 11/11.
+
+Partially working, and visibly so:
+
+```
+'ल्ाखानÅ नगर निगम कान्हा उपवन गाSशााला गायों के भारण पोष.ा हेतु'
+```
+
+`नगर निगम कान्हा उपवन` and `गायों के` are recovered; `ल्ाखानÅ` should be लखनऊ
+and `भारण पोष.ा` should be भरण पोषण.
 
 **`fam-01` and `fam-03` got worse**, and `fam-01` was not even in the
 extraction list. §7.2 is why, partly.
