@@ -193,10 +193,10 @@ Nothing in this phase publishes anything and no text left the machine. But the
 better this converter gets, the more those decisions need making — and they
 should be made before any converted output is shared, not after.
 
-## 7. Phase 4b — in progress
+## 7. Phase 4b — results
 
-Started 2026-08-21. **No results yet**; this records the design and the
-measurement behind it so the phase is legible if it is interrupted.
+Run 2026-08-21. **Mixed: the hypothesis held where it was cleanly testable and
+is confounded everywhere else.**
 
 §7 below named three things a next phase would need. The first — a second
 hand-seeded family — was done inside Phase 4 (§4.4): `fam-02` gained a 25-rule
@@ -228,8 +228,78 @@ fam-04's 22 documents average 138 pages each, and later pages of a long tender
 are annexes and tables rather than the prose the aligner learns from.
 
 **`fam-02` is the real test.** It already carries a hand seed, so training
-volume is the only variable changing. If more data does not move it, its
-failure is the encoding rather than the data, and this lever is spent there too.
+volume is the only variable changing.
+
+### 7.1.1 What happened
+
+| family | OCR agreement | invalid/1k | training data |
+|---|---|---|---|
+| fam-01 | 0.366 → 0.359 | 19.3 → **29.6** | 1.15× |
+| **fam-02** | 0.087 → **0.200** | 43.5 → **26.8** | 2.1× |
+| fam-03 | 0.366 → 0.336 | 12.6 → **32.9** | 2.9× |
+| fam-04 | 0.267 → 0.267 | 52.1 → 52.1 | **none** |
+| fam-05 | 0.022 → 0.028 | 372.5 → **217.9** | 1.9× |
+
+**`fam-02` improved on both measures at once**, which nothing in Phase 4
+managed — every earlier change traded one against the other. 0.087 → 0.200 is
+2.3×, on the one family where volume was the only variable. That is the
+hypothesis confirmed on the test designed for it.
+
+`fam-05` halved its violations and remains unusable at 0.028 agreement.
+
+**`fam-04` is a null result, not a finding.** It received no new data at all —
+see §7.3 — so its unchanged row means the treatment was never applied.
+
+**`fam-01` and `fam-03` got worse**, and `fam-01` was not even in the
+extraction list. §7.2 is why, partly.
+
+### 7.2 Multi-family documents contaminate training, and it is measurable
+
+`family_member` is keyed per *observation*, so a document carrying fonts from
+two families feeds **both** training sets. Only 6 of 431 documents (1.4%) are
+multi-family — but they contributed 105 deep pages to `fam-01` and 140 to
+`fam-03`, and `fam-01` gained only 70 paired pages net. A handful of documents
+dominated what changed, carrying the wrong encoding into the data.
+
+Tested rather than asserted. Re-deriving `fam-01` with those six documents
+excluded, scored over identical held-out pages:
+
+| | rules | invalid/1k | ocr_sim |
+|---|---|---|---|
+| with multi-family documents | 352 | 28.7 | 0.272 |
+| without them | 338 | **23.4** | 0.277 |
+
+**Removing 1.4% of documents improved structural validity by 18%.** Real, and
+**not the whole story** — it does not recover the full regression, so a second
+cause remains unidentified. The plausible one is distributional: deep pages of a
+long tender are annexes, tables and forms, not the prose the aligner learns
+from and the test set contains. That is untested.
+
+The fix `page_pairs` needs is to require the family's font to dominate the page
+rather than merely appear in the document. It is not applied here, because
+applying it would change every number above mid-phase.
+
+### 7.3 The drive-drop guard did not fire, and had never worked here
+
+The drive dropped a fourth time, during `fam-04`'s extraction. All 22 documents
+failed, both arms, and the run reported success with 22 stored errors instead
+of aborting.
+
+**PyMuPDF defines its own `FileNotFoundError`, subclassing `RuntimeError` rather
+than `OSError`.** `except FileNotFoundError` never matches it, while
+`type(e).__name__` still prints `FileNotFoundError` — so the log read exactly
+as though the guard had worked.
+
+```
+is builtin FileNotFoundError? False
+mro: ['FileNotFoundError', 'RuntimeError', 'Exception', ...]
+```
+
+`benchmark_extract.py` carried the same hole and escaped Phase 3 only by luck:
+its arm set includes `pypdf`, which calls `open()` and raises the real builtin,
+so something in the loop always tripped the guard. `extract_training.py` runs
+PyMuPDF and OCR only, and nothing ever did. Both now test the exception's type,
+name and message.
 
 ### 7.2 A reference that did not come from OCR
 
