@@ -505,15 +505,19 @@ rules, 5 families), `rebuild_corpus.py`, `summary.json`, `LICENSING.md`,
 
 ## Where Phase 4b stands
 
-Results in `docs/phase4-results.md` §7. **Ran 2026-08-21: one clear win, two
-regressions, one null.** Pushed.
+Results in `docs/phase4-results.md` §7. **Ran 2026-08-21 and complete.** Pushed.
+
+**The one-line verdict: 4b improved the converters and improved none of the
+evidence.** Training volume rose 2-5x across four families; every held-out set
+stayed exactly as thin as it was, because the split is by document and the
+extra data was more pages of the same documents.
 
 | family | ocr_sim | invalid/1k | data |
 |---|---|---|---|
 | fam-01 | 0.366 -> 0.359 | 19.3 -> 29.6 | 1.15x |
 | **fam-02** | 0.087 -> **0.200** | 43.5 -> **26.8** | 2.1x |
 | fam-03 | 0.366 -> 0.336 | 12.6 -> 32.9 | 2.9x |
-| fam-04 | unchanged | unchanged | **none** |
+| fam-04 | 0.267 -> **0.386** | 52.1 -> 59.3 | 4.7x |
 | fam-05 | 0.022 -> 0.028 | 372.5 -> 217.9 | 1.9x |
 
 **fam-02 is the result.** It moved on BOTH measures at once, which nothing else
@@ -530,9 +534,16 @@ fam-01's structural validity — real, measured, and **not the whole regression*
 The remaining cause is unidentified; the untested guess is that deep pages of a
 long tender are annexes and tables, not the prose the test set holds.
 
-**fam-04 is a null, not a finding.** It received no data at all, so its
-unchanged row means the treatment was never applied. **Re-run
-`extract_training.py --family fam-04-f1 --max-pages 30` when the drive is back.**
+**fam-04's null is resolved.** Re-extracted 2026-08-21 with the fixed guard:
+550 pages per arm, zero errors, 133,446 -> 627,133 training characters — the
+largest increase any family received. Agreement rose 44%, structural validity
+moved the wrong way, and **the held-out set is still 3 pages**. 4.7x the data
+bought zero extra held-out *documents*. That is the clean demonstration of the
+verdict above.
+
+**Every 4b number rests on a tiny test set**: fam-02's win on 7 pages, fam-03
+on 4, fam-04 on 3. Only fam-01 (93) has an evaluation worth the name, and it
+regressed. Quote none of these as if they were measurements.
 
 **PyMuPDF defines its own `FileNotFoundError`, subclassing `RuntimeError`.**
 `except FileNotFoundError` never matches it, while `type(e).__name__` still
@@ -546,6 +557,14 @@ builtin. Both now use `is_missing_file()`, which checks type, name and message.
 **97 transcription lines are drawn** (`hand-v1`, stratified 40/15/15/15/15).
 `python transcribe.py --next`. Nothing has been typed yet, so every accuracy
 figure in Phases 4 and 4b is still OCR grading itself.
+
+**More pages will not help again.** 4b spent that lever on four families. What
+bounds every remaining number is the number of *documents* carrying these
+encodings, and `robots.txt` bounds how many can ever be collected — the same
+limit `phase1-results.md` names. The two things that would still move
+something are the transcription pass (an independent yardstick) and rebuilding
+family centroids from page text (so the rejected signature filter could be
+tested fairly).
 
 ## Open, and genuinely the author's
 
