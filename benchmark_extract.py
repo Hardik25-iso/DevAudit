@@ -129,6 +129,24 @@ def record_sample(conn, run_id, tier, docs):
 # the pass
 # ---------------------------------------------------------------------------
 
+
+def is_missing_file(exc):
+    """
+    Did this exception mean "the file is not there"?
+
+    Cannot be a bare `except FileNotFoundError`. PyMuPDF defines its OWN
+    FileNotFoundError that subclasses RuntimeError, not OSError, so the builtin
+    never matches it -- while `type(e).__name__` still prints "FileNotFoundError"
+    and makes the log look right.
+
+    That is how the drive's fourth drop got past this guard: it wrote 22 stored
+    errors instead of aborting. Phase 3 escaped only by luck, because its arm
+    set included pypdf, which calls open() and raises the real builtin.
+    """
+    return (isinstance(exc, OSError)
+            or type(exc).__name__ == "FileNotFoundError"
+            or "no such file" in str(exc).lower())
+
 def done_keys(conn, run_id):
     return {(r[0], r[1], r[2]) for r in conn.execute(
         "SELECT sha256, page, arm FROM extraction WHERE run_id = ?", (run_id,))}
@@ -215,20 +233,27 @@ def main():
             try:
                 out, elapsed = ex.extract(arm, path, todo)
                 missing_streak = 0
-            except FileNotFoundError as e:
+            except Exception as e:
                 # The external drive drops. Ten in a row is not ten bad
                 # documents, it is an unplugged disk, and continuing would
                 # write a thousand spurious errors over a good run.
-                missing_streak += 1
-                tally["missing"] += 1
-                if missing_streak >= 10:
-                    conn.commit()
-                    raise SystemExit(
-                        "\n10 consecutive documents missing — the external "
-                        "drive is almost certainly detached. Nothing written "
-                        "since the last commit is lost; rerun to resume.")
-                continue
-            except Exception as e:
+                #
+                # Routed through is_missing_file() rather than
+                # `except FileNotFoundError`, which does not catch PyMuPDF's
+                # same-named exception. This guard only ever fired here because
+                # the arm set happens to include pypdf, which raises the real
+                # builtin; extract_training.py runs PyMuPDF and OCR only, and
+                # its copy of this guard sat silent through a whole drive drop.
+                if is_missing_file(e):
+                    missing_streak += 1
+                    tally["missing"] += 1
+                    if missing_streak >= 10:
+                        conn.commit()
+                        raise SystemExit(
+                            "\n10 consecutive documents missing — the external "
+                            "drive is almost certainly detached. Nothing written "
+                            "since the last commit is lost; rerun to resume.")
+                    continue
                 store(conn, run_id, sha, 0, arm, None, None,
                       f"{type(e).__name__}: {str(e)[:300]}")
                 tally[f"error:{arm}"] += 1

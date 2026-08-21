@@ -32,6 +32,24 @@ import font_audit as fa
 ARMS = ("pymupdf", "ocr")
 
 
+
+def is_missing_file(exc):
+    """
+    Did this exception mean "the file is not there"?
+
+    Cannot be a bare `except FileNotFoundError`. PyMuPDF defines its OWN
+    FileNotFoundError that subclasses RuntimeError, not OSError, so the builtin
+    never matches it -- while `type(e).__name__` still prints "FileNotFoundError"
+    and makes the log look right.
+
+    That is how the drive's fourth drop got past this guard: it wrote 22 stored
+    errors instead of aborting. Phase 3 escaped only by luck, because its arm
+    set included pypdf, which calls open() and raises the real builtin.
+    """
+    return (isinstance(exc, OSError)
+            or type(exc).__name__ == "FileNotFoundError"
+            or "no such file" in str(exc).lower())
+
 def select_documents(conn, family_id, seed):
     sql = """
         SELECT DISTINCT o.sha256, d.stored_path, m.family_id
@@ -91,16 +109,16 @@ def main():
             try:
                 out, _ = ex.extract(arm, path, todo)
                 missing_streak = 0
-            except FileNotFoundError:
-                missing_streak += 1
-                tally["missing"] += 1
-                if missing_streak >= 10:
-                    conn.commit()
-                    raise SystemExit(
-                        "\n10 consecutive documents missing — the drive is "
-                        "almost certainly detached. Rerun to resume.")
-                continue
             except Exception as e:
+                if is_missing_file(e):
+                    missing_streak += 1
+                    tally["missing"] += 1
+                    if missing_streak >= 10:
+                        conn.commit()
+                        raise SystemExit(
+                            "\n10 consecutive documents missing — the drive is "
+                            "almost certainly detached. Rerun to resume.")
+                    continue
                 conn.execute(
                     "INSERT OR REPLACE INTO page_text "
                     "(sha256, page, arm, error, extracted_at) VALUES (?,?,?,?,?)",
