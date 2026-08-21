@@ -29,20 +29,24 @@ reader there. `docs/phaseN-results.md` are the detailed record behind it.
 
 **Storage.** Bulk PDFs live on `D:\DevAudit-data\raw` (external, frequently
 detached). `manifest.sqlite` lives on the SSD inside the repo, deliberately —
-the drive has dropped mid-run **three times** and the manifest survived every
-one. If every document errors with "file missing", the drive is unplugged.
+the drive has dropped mid-run **four times** and the manifest survived every
+one. If every document errors with "file missing", the drive is unplugged —
+but do not rely on that being obvious, because the fourth drop was silent; see
+"Where Phase 4b stands".
 
 **An interrupted census is a sample.** Both Phase 3 drive drops left partial
 runs that were body-skewed rather than random, because the document list was
-not shuffled. Every selection path now shuffles; keep it that way.
+not shuffled. Every selection path now shuffles; keep it that way. The fourth
+drop, in Phase 4b, was worse: it produced no partial run at all and reported
+success, because the guard did not recognise PyMuPDF's exception.
 
 **The instrument fails toward silence, never toward alarm.** Every defect found
 in the original audit tool pushed the corruption estimate *down*. A detector
 that over-fires inflates the headline in the flattering direction, which is the
 one to distrust. Measure a candidate detector against labelled ground truth
-before shipping it; **four have now been measured and rejected**, the latest
-being Phase 4's seed-conflict filter, which fixed the defect being looked at
-and made everything else worse.
+before shipping it; **five have now been measured and rejected**, the latest
+two being Phase 4's seed-conflict filter and 4b's page-signature filter. Both
+fixed the defect being looked at and made everything else worse.
 
 It recurred in three new places after Phase 2. `pdftotext` scores 0.001
 mojibake while emitting 43.7% U+FFFD, so it would have ranked *best* on the
@@ -499,6 +503,50 @@ those in readable form.
 rules, 5 families), `rebuild_corpus.py`, `summary.json`, `LICENSING.md`,
 `MAPPING_TABLES.md`. Never the documents, never `manifest.sqlite`.
 
+## Where Phase 4b stands
+
+Results in `docs/phase4-results.md` §7. **Ran 2026-08-21: one clear win, two
+regressions, one null.** Pushed.
+
+| family | ocr_sim | invalid/1k | data |
+|---|---|---|---|
+| fam-01 | 0.366 -> 0.359 | 19.3 -> 29.6 | 1.15x |
+| **fam-02** | 0.087 -> **0.200** | 43.5 -> **26.8** | 2.1x |
+| fam-03 | 0.366 -> 0.336 | 12.6 -> 32.9 | 2.9x |
+| fam-04 | unchanged | unchanged | **none** |
+| fam-05 | 0.022 -> 0.028 | 372.5 -> 217.9 | 1.9x |
+
+**fam-02 is the result.** It moved on BOTH measures at once, which nothing else
+in Phase 4 or 4b managed — every other change traded one against the other. It
+was also the only family where training volume was the sole variable, since it
+already carried a hand seed. That is the hypothesis confirmed on the test built
+for it.
+
+**fam-01 and fam-03 regressed and only part of it is explained.**
+`family_member` is keyed per *observation*, so a document carrying two
+families' fonts feeds both training sets. 6 of 431 documents (1.4%) contributed
+105 deep pages to fam-01 and 140 to fam-03. Excluding them recovers 18% of
+fam-01's structural validity — real, measured, and **not the whole regression**.
+The remaining cause is unidentified; the untested guess is that deep pages of a
+long tender are annexes and tables, not the prose the test set holds.
+
+**fam-04 is a null, not a finding.** It received no data at all, so its
+unchanged row means the treatment was never applied. **Re-run
+`extract_training.py --family fam-04-f1 --max-pages 30` when the drive is back.**
+
+**PyMuPDF defines its own `FileNotFoundError`, subclassing `RuntimeError`.**
+`except FileNotFoundError` never matches it, while `type(e).__name__` still
+prints "FileNotFoundError" so the log looks right. That is how the drive's
+fourth drop produced 22 stored errors instead of an abort.
+`benchmark_extract.py` had the same hole all through Phase 3 and escaped only
+because its arm set includes `pypdf`, which calls `open()` and raises the real
+builtin. Both now use `is_missing_file()`, which checks type, name and message.
+**Do not write `except FileNotFoundError` around a PyMuPDF call.**
+
+**97 transcription lines are drawn** (`hand-v1`, stratified 40/15/15/15/15).
+`python transcribe.py --next`. Nothing has been typed yet, so every accuracy
+figure in Phases 4 and 4b is still OCR grading itself.
+
 ## Open, and genuinely the author's
 
 **The DPDP 2023 question.** The technical position is settled and enforced;
@@ -508,12 +556,18 @@ and "already public" does not obviously settle it.
 
 ## Next phase
 
-**Phase 4b**, if anything. Results §7 lists what it would need: a second
-hand-seeded family, more paired pages for the thin families, and a few hundred
-hand-transcribed lines to break the OCR circularity that a held-out split can
-only reduce.
+**Do not spend more effort on rule-level tuning.** Five candidate rules have now
+been measured and rejected across this project, two of them inside Phase 4: the
+seed-conflict filter and the page-signature filter. Both fixed the case being
+looked at and cost more elsewhere. Also rejected: the parameter sweep and repha
+for fam-01, both neutral. **The only changes that ever moved a held-out number
+were training volume and the DP applier.**
 
-**Do not spend more effort on rule-level tuning.** Three attempts — the
-parameter sweep, repha for fam-01, and the seed-conflict filter — all landed
-neutral-to-negative on held-out numbers. The two changes that moved anything
-were training volume (5.8x) and the DP applier.
+What is actually left, in order of value:
+
+1. **Type the 97 transcription lines.** It is the only route to an accuracy
+   figure that is not OCR grading itself, and the tool is built and waiting.
+2. **Re-run fam-04's extraction** — a real null waiting on the drive.
+3. **Rebuild family centroids from page text**, which would let the
+   page-signature filter be tested fairly rather than on excerpt-derived
+   centroids that make every page look wrong.
