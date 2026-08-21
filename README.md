@@ -55,6 +55,34 @@ Set the scans aside — they're an OCR problem, already well studied, and not
 what this measures. Among the 1,097 documents that *do* carry a text layer,
 **70.7% of it is wrong.**
 
+### Then Phase 3 found the figure above is a floor
+
+Comparing OCR of the *rendered page* against the text layer catches a family of
+corruption every signal above is blind to: legacy remaps embedded under font
+names like `Helvetica` and `Times-Roman`, emitting plain ASCII with no Latin-1
+supplement and no Kruti Dev `k`. The page shows Devanagari; the text layer
+contains none.
+
+It fires on **42.8% of scorable pages that Phase 1 called clean.**
+
+| | Phase 1 | corrected |
+|---|---|---|
+| Macro | 36.5% | **45.4%** |
+| Pooled | 48.4% | **56.7%** |
+
+**This is the first correction in the project's history that pushes the estimate
+up**, which is the direction to distrust — so three controls were measured
+before believing it. Pune Metro, which publishes in English, moves 0 of 47
+pages. `SUSPECT` fires at 1.7%, correctly, because it is invalid Devanagari
+rather than a script failure. `LEGACY` fires at 68.1%. All three Phase 1 classes
+behave as the mechanism predicts.
+
+It rests on a single OCR engine and compares page 1 against a document-level
+verdict, both stated in [`docs/phase3-results.md`](docs/phase3-results.md) §1.2.
+[`docs/phase1-results.md`](docs/phase1-results.md) is **not** revised: it stays
+traceable to the rows that produced it, and the correction is reported
+additively.
+
 ### It isn't one problem, it's three
 
 The starting hypothesis named one mechanism. The corpus contains three, and
@@ -308,13 +336,25 @@ them. Details in [`docs/LICENSING.md`](docs/LICENSING.md).
 |---|---|---|
 | 0 | Schema, annotation guidelines | **done** |
 | 1 | Collection + font/encoding audit | **done — GO** |
-| 2 | Ground truth: LLM draft + human verification | **done - stated limitation** |
-| 3 | Benchmark pdftotext, pdfplumber, Surya, PaddleOCR, a VLM | later |
-| 4 | Legacy-font converter + constraint validation | later |
-| 5 | Write-up and release | later |
+| 2 | Ground truth: LLM draft + human verification | **done — stated limitation** |
+| 3 | Benchmark five extractors, incl. an OCR arm | **done** |
+| 4 | Legacy-font converter + constraint validation | **done — partial result** |
+| 5 | Write-up and release | in progress |
 
-Phase 2 is underway: 6,572 font observations extracted and reconciled, 434
-drawn for annotation and labelled.
+**Phase 3** ran five extractors over the corpus. No text-layer extractor
+recovers legacy-encoded text; they differ in *how* they fail, not whether.
+`pdftotext` loses 20.6 points more pages than the others, entirely to U+FFFD —
+and would have ranked *best* on the Phase 1/2 signals alone, because none of
+them can see a replacement character. All four arms agree on only 4.2% of
+pages, so at least one is wrong on ≥95.8%.
+[`docs/phase3-results.md`](docs/phase3-results.md)
+
+**Phase 4** built reverse-encoding tables for the five families that cover 94%
+of convicted legacy observations. One family converts usefully and is well
+short of correct — held-out median agreement with OCR is 0.37. One produces
+confident, well-formed Devanagari that is *not* the right Devanagari, which is
+the failure the metric design was built to catch. Three have test sets too thin
+to judge. [`docs/phase4-results.md`](docs/phase4-results.md)
 
 **The Phase 2 labels are a single model-assisted pass, not two-pass ground
 truth.** The protocol called for an independent second pass gated on Cohen's

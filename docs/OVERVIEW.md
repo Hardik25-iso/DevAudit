@@ -167,6 +167,13 @@ would have been publishable rather than embarrassing.
 | **Corrupt, pooled** | **48.4%** |
 | **Corrupt, macro by body** | **36.5%** |
 
+**Phase 3 later established that these are a floor.** Comparing OCR of the
+rendered page against the text layer catches legacy remaps hiding under font
+names like `Helvetica` — invisible to every signal above. It fires on 42.8% of
+scorable pages Phase 1 called clean, moving the estimate to **45.4% macro /
+56.7% pooled**. Three controls hold: Pune Metro (English-publishing) moves 0 of
+47 pages, `SUSPECT` fires at 1.7%, `LEGACY` at 68.1%.
+
 Among documents that carry a text layer at all, 70.7% is wrong. Per-body rates
 range from 1% (Pune Metro, publishes in English) to 80% (Nashik MC).
 
@@ -216,14 +223,16 @@ that over-fires is the one to distrust.
 | 0 | Schema and annotation guidelines | done |
 | 1 | Collection and audit | done — GO |
 | 2 | Ground truth and detector evaluation | done, with a stated limitation |
-| 3 | Benchmark extractors against ground truth | next |
-| 4 | Legacy-font converter, constraint validation | later |
-| 5 | Write-up and release | later |
+| 3 | Benchmark extractors against ground truth | done |
+| 4 | Legacy-font converter, constraint validation | done — partial |
+| 5 | Write-up and release | in progress |
 
 ## Reading order
 
 1. [`README.md`](../README.md) — the finding and how to run everything
 2. [`phase1-results.md`](phase1-results.md) — prevalence, with breakdowns
 3. [`phase2-results.md`](phase2-results.md) — detector evaluation and its limits
-4. [`phase0-schema.md`](phase0-schema.md) — schema, label definitions, protocol
-5. [`LICENSING.md`](LICENSING.md) — what each source permits
+4. [`phase3-results.md`](phase3-results.md) — extractor benchmark, and the correction above
+5. [`phase4-results.md`](phase4-results.md) — the converter, and where it falls short
+6. [`phase0-schema.md`](phase0-schema.md) — schema, label definitions, protocol
+7. [`LICENSING.md`](LICENSING.md) — what each source permits
