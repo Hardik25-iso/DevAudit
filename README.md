@@ -319,6 +319,10 @@ them. Details in [`docs/LICENSING.md`](docs/LICENSING.md).
 
 ## Documents
 
+**Start with [`docs/REPORT.md`](docs/REPORT.md)** — the consolidated
+write-up: problem, method, results, and what the findings will not support.
+Everything below is the detailed record behind it.
+
 - [`docs/OVERVIEW.md`](docs/OVERVIEW.md) - what the project is, in plain
   language and then in technical terms. Start here if you are new to it.
 

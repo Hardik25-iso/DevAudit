@@ -229,10 +229,11 @@ that over-fires is the one to distrust.
 
 ## Reading order
 
-1. [`README.md`](../README.md) — the finding and how to run everything
-2. [`phase1-results.md`](phase1-results.md) — prevalence, with breakdowns
-3. [`phase2-results.md`](phase2-results.md) — detector evaluation and its limits
-4. [`phase3-results.md`](phase3-results.md) — extractor benchmark, and the correction above
-5. [`phase4-results.md`](phase4-results.md) — the converter, and where it falls short
-6. [`phase0-schema.md`](phase0-schema.md) — schema, label definitions, protocol
-7. [`LICENSING.md`](LICENSING.md) — what each source permits
+1. [`REPORT.md`](REPORT.md) — the consolidated write-up, start here
+2. [`README.md`](../README.md) — the finding and how to run everything
+3. [`phase1-results.md`](phase1-results.md) — prevalence, with breakdowns
+4. [`phase2-results.md`](phase2-results.md) — detector evaluation and its limits
+5. [`phase3-results.md`](phase3-results.md) — extractor benchmark, and the correction above
+6. [`phase4-results.md`](phase4-results.md) — the converter, and where it falls short
+7. [`phase0-schema.md`](phase0-schema.md) — schema, label definitions, protocol
+8. [`LICENSING.md`](LICENSING.md) — what each source permits
