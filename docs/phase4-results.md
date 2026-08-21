@@ -193,7 +193,61 @@ Nothing in this phase publishes anything and no text left the machine. But the
 better this converter gets, the more those decisions need making — and they
 should be made before any converted output is shared, not after.
 
-## 7. What a next phase would need
+## 7. Phase 4b — in progress
+
+Started 2026-08-21. **No results yet**; this records the design and the
+measurement behind it so the phase is legible if it is interrupted.
+
+§7 below named three things a next phase would need. The first — a second
+hand-seeded family — was done inside Phase 4 (§4.4): `fam-02` gained a 25-rule
+seed, its agreement improved by roughly half, and it stayed far below `fam-01`.
+So the missing seed was part of that failure and not the whole of it. Two items
+remain, and 4b takes both.
+
+### 7.1 More training pages, which is the lever that worked
+
+`fam-01` went from 599,444 to 2,849,365 characters and structural violations
+fell 5.8×. The thin families were never given the same treatment. Measured
+headroom, pages available against pages already extracted:
+
+| family | pages available | used | headroom | train chars |
+|---|---|---|---|---|
+| fam-01 | 2,194 | 1,680 | 1.3× | 1,012,485 |
+| fam-02 | 751 | 180 | **4.2×** | 94,451 |
+| fam-03 | 616 | 135 | **4.6×** | 128,083 |
+| fam-04 | 3,028 | 110 | **27×** | 133,446 |
+| fam-05 | 378 | 85 | **4.4×** | 213,712 |
+
+`fam-01` is nearly exhausted. The four that failed have 4–27× untapped, and
+they failed on roughly the training volume that `fam-01` failed on before its
+re-extraction. That is the whole hypothesis: same lever, families that never
+received it.
+
+Extracting pages 6–40 for fam-02/03/05 and 6–30 for fam-04 — capped because
+fam-04's 22 documents average 138 pages each, and later pages of a long tender
+are annexes and tables rather than the prose the aligner learns from.
+
+**`fam-02` is the real test.** It already carries a hand seed, so training
+volume is the only variable changing. If more data does not move it, its
+failure is the encoding rather than the data, and this lever is spent there too.
+
+### 7.2 A reference that did not come from OCR
+
+`transcribe.py` collects one: a human reads the rendered page and types what it
+says. A hundred lines, drawn **stratified by family** — fam-01 has ~5× the pages
+of the others, so an unstratified draw would be almost all fam-01 and would say
+nothing about the families that failed.
+
+It reports two numbers. *Converter vs human* would be the first figure in this
+project independent of Tesseract. *OCR vs human* is Tesseract's own error rate
+on this corpus — the ceiling every OCR-derived figure above silently sits under,
+and which nothing has yet measured.
+
+OCR output is hidden from the transcriber by default, the same reasoning as
+`annotate.py` hiding the detector's verdict: showing it first biases the
+transcriber toward its errors, which is the bias the exercise exists to escape.
+
+## 8. What a further phase would need
 
 - **A second family with a hand seed**, to test whether seeding explains the
   `fam-02` failure or whether that encoding is genuinely harder.
