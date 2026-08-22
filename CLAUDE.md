@@ -587,6 +587,14 @@ What is actually left, in order of value:
 1. **Type the 97 transcription lines.** It is the only route to an accuracy
    figure that is not OCR grading itself, and the tool is built and waiting.
 2. **Re-run fam-04's extraction** — a real null waiting on the drive.
-3. **Rebuild family centroids from page text**, which would let the
-   page-signature filter be tested fairly rather than on excerpt-derived
-   centroids that make every page look wrong.
+3. ~~Rebuild family centroids from page text~~ **Done 2026-08-21.**
+   `legacy_families.py --recentroid` builds them; `font_family.centroid_pagetext`
+   holds them beside the excerpt ones, membership untouched. The two disagree
+   most exactly where the filter did most damage (fam-02 at 0.758 against
+   0.92-1.00 elsewhere), which confirmed the diagnosis independently.
+
+   **The filter was then re-tested fairly and rejected again.** The grain fix
+   removed the harm and produced no benefit: fam-01 unchanged, fam-04 slightly
+   worse, fam-02 bit-identical on 41% less training data. Do not revisit
+   signature filtering without a new idea — the contamination it targets is
+   real, but this is not how to catch it.

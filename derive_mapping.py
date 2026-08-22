@@ -165,9 +165,27 @@ def seed_segment(source, seed):
 # and this applies them to whole PAGES carrying English headers, tender numbers
 # and tables. A perfectly good page scores low for being a page.
 #
-# Kept, off, because the idea is sound and a centroid rebuilt from page text
-# would be the way to test it properly. Fifth candidate rule this project has
-# measured and rejected.
+# RE-TESTED FAIRLY, 2026-08-21, and still not worth turning on. Centroids were
+# rebuilt at page grain (`legacy_families.py --recentroid`) and the filter
+# pointed at those instead:
+#
+#   fam-01  no filter  373 pages  invalid 28.7/1k  ocr_sim 0.272
+#           page cent  372 pages  invalid 28.1/1k  ocr_sim 0.278
+#   fam-02  no filter   85 pages  invalid 18.4/1k  ocr_sim 0.012
+#           page cent   50 pages  invalid 18.4/1k  ocr_sim 0.012
+#   fam-04  no filter  200 pages  invalid 77.8/1k  ocr_sim 0.166
+#           page cent  175 pages  invalid 77.5/1k  ocr_sim 0.152
+#
+# The grain fix removed the HARM -- fam-02 no longer degrades, and retention
+# went from 51 to 206 pages on fam-04 -- but produced no benefit. fam-01 is
+# unchanged, fam-04 is slightly worse, and fam-02 is bit-identical on 41% less
+# training data, which says the pages it drops were redundant rather than
+# damaging.
+#
+# So: the grain mismatch was real and is fixed, and the filter is still off.
+# The contamination it was built to catch is also real (18% of fam-01's
+# structural validity, §7.2) -- signature filtering is simply not how to catch
+# it. Fifth candidate rule measured and rejected, now twice.
 PAGE_SIGNATURE_FLOOR = 0.70
 
 
@@ -179,10 +197,26 @@ def looks_like_family(text, centroid):
 
 
 def family_centroid(conn, family_id):
+    """
+    Prefer the page-grain centroid when one exists.
+
+    `centroid` is excerpt-derived — short, legacy-dense text. Comparing a whole
+    page against it fails a good page for being a page, which is what killed
+    the filter below. `centroid_pagetext` is the grain-matched version, built
+    by `legacy_families.py --recentroid`.
+
+    The two disagree most exactly where the filter did most damage: fam-02
+    scores 0.758 between its two centroids against 0.92-1.00 elsewhere, and
+    fam-02 is the family the filter cut in half.
+    """
     import json
-    row = conn.execute("SELECT centroid FROM font_family WHERE family_id=?",
-                       (family_id,)).fetchone()
-    return json.loads(row[0]) if row and row[0] else None
+    row = conn.execute(
+        "SELECT centroid_pagetext, centroid FROM font_family WHERE family_id=?",
+        (family_id,)).fetchone()
+    if not row:
+        return None
+    blob = row[0] or row[1]
+    return json.loads(blob) if blob else None
 
 
 def page_pairs(conn, family_id, split_docs=None, require_signature=False):

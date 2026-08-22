@@ -190,6 +190,8 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[1])
     ap.add_argument("--build", action="store_true")
     ap.add_argument("--report", action="store_true")
+    ap.add_argument("--recentroid", action="store_true",
+                    help="recompute centroids from page text; membership untouched")
     ap.add_argument("--threshold", type=float, default=DEFAULT_THRESHOLD)
     ap.add_argument("--top", type=int, default=5,
                     help="families to keep; 0 = all (design §2 scopes this to 5)")
@@ -200,10 +202,74 @@ def main():
     conn.row_factory = sqlite3.Row
     if args.build:
         build(conn, args.threshold, args.top)
-    if args.report or not args.build:
+    if args.recentroid:
+        recentroid(conn)
+    if args.report or not (args.build or args.recentroid):
         report(conn)
     conn.close()
 
+
+
+
+# ---------------------------------------------------------------------------
+# page-grain centroids
+# ---------------------------------------------------------------------------
+
+def recentroid(conn):
+    """
+    Recompute each family's centroid from whole PAGES, storing it beside the
+    excerpt-derived one rather than replacing it.
+
+    Membership is not touched. Re-clustering would move families and therefore
+    every number derived from them; this only gives the existing families a
+    second, grain-matched signature.
+
+    The reason it exists: the page-signature filter in derive_mapping.py was
+    measured and rejected because it compared whole pages against centroids
+    built from excerpts — short, legacy-dense text — so a perfectly good page
+    scored low for being a page. This is the centroid that would let the idea
+    be tested fairly.
+    """
+    fams = conn.execute(
+        "SELECT family_id FROM font_family ORDER BY n_observations DESC").fetchall()
+    print(f"{'family':26}{'pages':>7}{'chars':>12}{'cos to excerpt centroid':>26}")
+    for f in fams:
+        fid = f["family_id"]
+        rows = conn.execute("""
+            SELECT t.text FROM page_text t
+            JOIN font_observation o ON o.sha256 = t.sha256
+            JOIN family_member m ON m.obs_id = o.obs_id
+            WHERE t.arm = 'pymupdf' AND m.family_id = ?
+              AND t.n_chars > 200 AND t.dev_share < 0.05
+            GROUP BY t.sha256, t.page
+        """, (fid,)).fetchall()
+        if not rows:
+            print(f"{fid:26}{0:>7}   no page text — run extract_training.py")
+            continue
+
+        total, n = {}, 0
+        chars = 0
+        for r in rows:
+            sig = signature(r["text"])
+            if not sig:
+                continue
+            n += 1
+            chars += len(r["text"] or "")
+            for ch, v in sig.items():
+                total[ch] = total.get(ch, 0.0) + v
+        if not n:
+            continue
+        centroid = {ch: v / n for ch, v in total.items()}
+
+        old = conn.execute("SELECT centroid FROM font_family WHERE family_id=?",
+                           (fid,)).fetchone()[0]
+        drift = cosine(centroid, json.loads(old)) if old else float("nan")
+        conn.execute("UPDATE font_family SET centroid_pagetext=? WHERE family_id=?",
+                     (json.dumps(centroid, ensure_ascii=False), fid))
+        print(f"{fid:26}{n:>7}{chars:>12,}{drift:>26.3f}")
+    conn.commit()
+    print("\ncos to excerpt centroid: how far the two grains disagree. Low values")
+    print("are the reason the page-signature filter failed on excerpt centroids.")
 
 if __name__ == "__main__":
     main()

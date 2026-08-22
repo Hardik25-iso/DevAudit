@@ -49,6 +49,13 @@ CREATE TABLE IF NOT EXISTS font_family (
     example_fonts   TEXT,
     example_text    TEXT,
     threshold       REAL,                   -- cosine floor used to form it
+    -- A second centroid, computed from whole PAGES rather than excerpts.
+    -- `centroid` above is excerpt-derived: short, legacy-dense text. Comparing
+    -- a whole page against it fails a good page for being a page, which is
+    -- what killed the page-signature filter (see derive_mapping.py). This is
+    -- the grain-matched version. Stored beside rather than replacing, so
+    -- membership -- and every number derived from it -- is untouched.
+    centroid_pagetext TEXT,
     created_at      TEXT
 );
 
@@ -159,6 +166,14 @@ CREATE INDEX IF NOT EXISTS idx_ptext_arm ON page_text(arm);
 """
 
 
+# Columns added after the table exists somewhere. CREATE TABLE IF NOT EXISTS
+# will not add them; this project has already been bitten by that once, in
+# phase3_schema.py, where bag_hash was added to SCHEMA and silently did nothing.
+MIGRATIONS = [
+    ("font_family", "centroid_pagetext", "TEXT"),
+]
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[1])
     ap.add_argument("--db", default=str(config.MANIFEST_DB))
@@ -168,6 +183,11 @@ def main():
     before = {r[0] for r in conn.execute(
         "SELECT name FROM sqlite_master WHERE type IN ('table','view')")}
     conn.executescript(SCHEMA)
+    for table, col, coltype in MIGRATIONS:
+        have = {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}
+        if col not in have:
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {coltype}")
+            print(f"  migrated: {table}.{col}")
     conn.commit()
     after = {r[0] for r in conn.execute(
         "SELECT name FROM sqlite_master WHERE type IN ('table','view')")}

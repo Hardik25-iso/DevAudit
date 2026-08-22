@@ -315,8 +315,49 @@ from `excerpt` text, which is short and legacy-dense, and this applies them to
 whole *pages* carrying English headers, tender numbers and tables. A perfectly
 good page scores low for being a page.
 
-Kept in `derive_mapping.py`, default off, with the numbers in the comment. A
-centroid rebuilt from page text is how the idea would be tested properly.
+### 7.2.2 Re-tested fairly, and still rejected
+
+The grain mismatch was fixable, so it was fixed. `legacy_families.py
+--recentroid` rebuilds each family's centroid from whole pages and stores it
+beside the excerpt one; membership is untouched, because re-clustering would
+move every number derived from it.
+
+The two centroids disagree most exactly where the filter did most damage:
+
+| family | cos(page, excerpt) |
+|---|---|
+| fam-01 | 0.979 |
+| **fam-02** | **0.758** |
+| fam-03 | 0.921 |
+| fam-04 | 0.954 |
+| fam-05 | 0.996 |
+
+That is the diagnosis confirmed by a measurement independent of the filter's
+own behaviour. Retention improved accordingly — fam-04 went from 51 pages kept
+to 206.
+
+Re-run with grain-matched centroids, same held-out sets:
+
+| family | | train | invalid/1k | ocr_sim |
+|---|---|---|---|---|
+| fam-01 | no filter | 373 | 28.7 | 0.272 |
+| | page centroid | 372 | 28.1 | 0.278 |
+| fam-02 | no filter | 85 | 18.4 | 0.012 |
+| | page centroid | 50 | 18.4 | 0.012 |
+| fam-04 | no filter | 200 | 77.8 | 0.166 |
+| | page centroid | 175 | 77.5 | **0.152** |
+
+**The fix removed the harm and produced no benefit.** fam-01 unchanged, fam-04
+slightly worse, and fam-02 *bit-identical* on 41% less training data — which
+says the pages it drops are redundant, not damaging.
+
+The contamination is still real (18% of fam-01's structural validity, §7.2).
+Signature filtering is simply not how to catch it. **Rejected twice**, on its
+own merits the second time.
+
+The page-grain centroids are kept regardless: they are a better description of
+each family than the excerpt ones, and `--recentroid` is the tool for anyone
+testing this again.
 
 **Fifth candidate rule this project has measured and rejected**, and the second
 inside Phase 4. Both fixed the case being looked at and cost more elsewhere.
