@@ -101,7 +101,8 @@ def draw(conn, sample_id, n, seed, family):
     conn.executemany("""INSERT OR IGNORE INTO transcription
         (sample_id, sha256, page, family_id, legacy_text, ocr_text, seed, drawn_at)
         VALUES (?,?,?,?,?,?,?,?)""",
-        [(sample_id, r["sha256"], r["page"], r["family_id"],
+        [(sample_id, r["sha256"], r["page"],
+          family_of_page(conn, r["legacy"]) or r["family_id"],
           (r["legacy"] or "")[:2000], (r["ocr"] or "")[:2000], seed, now)
          for r in picked])
     conn.commit()
@@ -261,6 +262,8 @@ def main():
     ap.add_argument("--show-ocr", action="store_true",
                     help="show OCR before you type (biases you; off by default)")
     ap.add_argument("--report", action="store_true")
+    ap.add_argument("--relabel", action="store_true",
+                    help="re-assign family by page signature")
     ap.add_argument("--db", default=str(config.MANIFEST_DB))
     args = ap.parse_args()
 
@@ -271,11 +274,63 @@ def main():
 
     if args.draw:
         draw(conn, args.sample_id, args.n, args.seed, args.family)
+    elif args.relabel:
+        relabel(conn, args.sample_id)
     elif args.next:
         next_item(conn, args.sample_id, args.show_ocr)
     else:
         report(conn, args.sample_id)
     conn.close()
+
+
+def family_of_page(conn, text, centroids=None):
+    """
+    Which family does this PAGE look like, by its own character signature?
+
+    Not by document membership. `family_member` is keyed per observation, so a
+    document carrying two families' fonts belongs to both, and a page drawn
+    from it gets whichever label the join happened to return. Measured on the
+    drawn sample: 14 of 97 pages were labelled as a family their own text does
+    not match, mostly fam-02 rows that are really fam-01.
+
+    That matters here more than anywhere else. Scoring a fam-01 page with
+    fam-02's table produces near-zero agreement and blames the table.
+
+    Uses `centroid_pagetext` where present -- these are pages, and the
+    excerpt-derived centroids are the wrong grain for them.
+    """
+    import json
+    import legacy_families as lf
+    if centroids is None:
+        centroids = {r["family_id"]: json.loads(r["centroid_pagetext"] or r["centroid"])
+                     for r in conn.execute("SELECT * FROM font_family")}
+    sig = lf.signature(text or "")
+    if not sig or not centroids:
+        return None
+    return max(centroids, key=lambda f: lf.cosine(sig, centroids[f]))
+
+
+def relabel(conn, sample_id):
+    """Re-assign family by page signature. Safe while nothing is transcribed."""
+    import json
+    cents = {r["family_id"]: json.loads(r["centroid_pagetext"] or r["centroid"])
+             for r in conn.execute("SELECT * FROM font_family")}
+    rows = conn.execute("SELECT * FROM transcription WHERE sample_id=?",
+                        (sample_id,)).fetchall()
+    moved = 0
+    for r in rows:
+        fam = family_of_page(conn, r["legacy_text"], cents)
+        if fam and fam != r["family_id"]:
+            conn.execute("UPDATE transcription SET family_id=? WHERE transcription_id=?",
+                         (fam, r["transcription_id"]))
+            moved += 1
+    conn.commit()
+    print(f"relabelled {moved}/{len(rows)} pages by their own signature")
+    from collections import Counter
+    d = Counter(r[0] for r in conn.execute(
+        "SELECT family_id FROM transcription WHERE sample_id=?", (sample_id,)))
+    for f, n in sorted(d.items()):
+        print(f"   {f:26} {n:>4}")
 
 
 if __name__ == "__main__":
